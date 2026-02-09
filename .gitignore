@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+uploads/
+.vscode/
+.idea/
+*.swp
+build/
+coverage/
+yarn.lock
+package-lock.json
+.next
+out/
