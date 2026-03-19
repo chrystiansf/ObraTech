@@ -1196,6 +1196,7 @@ async function iniciarSessao(session){
       }
 
       await carregarDadosSupabase();
+      await diagnosticarSupabase();
       mostrarApp();
       renderDash(); fillSelects(); renderObras();
       toast('👋','Bem-vindo, '+perfil.nome.split(' ')[0]+'!');
@@ -1224,6 +1225,44 @@ async function iniciarSessao(session){
 }
 
 // ── Carregar todos os dados da empresa ────────────────────────
+async function diagnosticarSupabase(){
+  if(!supa||!_empresaId) return;
+  // Primeiro: garantir que colunas necessárias existem via SQL
+  // Se não existirem, supaInsert vai falhar com "Could not find column"
+  const tabelasTeste=['obras','demandas','fornecedores_cadastro','nao_conformidades','drive_arquivos','categorias'];
+  const erros=[];
+  for(const t of tabelasTeste){
+    try{
+      // Tenta SELECT primeiro
+      const {data,error}=await supa.from(t).select('id').eq('empresa_id',_empresaId).limit(1);
+      if(error){erros.push(`${t}: ${error.message} (${error.code})`);}
+    }catch(e){erros.push(`${t}: ${e.message}`);}
+  }
+  if(erros.length>0){
+    console.error('PROBLEMAS SUPABASE:\n'+erros.join('\n'));
+    // Mostrar alerta detalhado
+    setTimeout(()=>{
+      const msg=`⚠️ Problema de acesso ao banco de dados:\n\n${erros.join('\n')}\n\nAcesse o Supabase → SQL Editor e execute:\nGRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;`;
+      console.warn(msg);
+      toast('⚠️','Problema de acesso ao banco. Veja o console para detalhes.');
+    },1000);
+  } else {
+    console.log('✓ Acesso a todas as tabelas OK');
+    // Testar ESCRITA
+    try{
+      const testId=uuidv4();
+      const {error:wErr}=await supa.from('demandas').insert({id:testId,empresa_id:_empresaId,titulo:'__teste__',status:'pendente',prioridade:'baixa'});
+      if(wErr){
+        console.error('TESTE ESCRITA FALHOU:',wErr.message,wErr.code);
+        toast('🔒','Escrita bloqueada no banco (RLS). Veja o console.');
+      } else {
+        // Apagar o registro de teste
+        await supa.from('demandas').delete().eq('id',testId).eq('empresa_id',_empresaId);
+        console.log('✓ Teste escrita OK — banco funcionando corretamente');
+      }
+    }catch(e){console.error('Teste escrita exception:',e.message);}
+  }
+}
 async function carregarDadosSupabase(){
   if(!supa||!_empresaId) return;
   try{
@@ -1350,16 +1389,29 @@ async function recarregarTabela(tabela){
 // SUPABASE SYNC — salvar/atualizar/excluir em tempo real
 // ═══════════════════════════════════════════════════════════════
 async function supaInsert(tabela, dados){
-  if(!supa||!_empresaId) return dados.id||null;
+  if(!supa){console.warn('supaInsert: supa null');return dados.id||null;}
+  if(!_empresaId){console.warn('supaInsert: _empresaId null');return dados.id||null;}
   try{
     const payload={...dados, id:dados.id||uuidv4(), empresa_id:_empresaId};
     const {data,error}=await supa.from(tabela).insert(payload).select('id').single();
     if(error){
-      console.error('supaInsert',tabela,error.message,JSON.stringify(payload).substring(0,200));
+      console.error('supaInsert ERRO',tabela,error.message,error.code,JSON.stringify(payload).substring(0,300));
+      if(error.message&&error.message.includes('Could not find')){
+        const col=error.message.match(/`([^`]+)` column/)?.[1]||'?';
+        console.error('COLUNA FALTANDO:',col,'na tabela',tabela,'— Execute no Supabase SQL Editor: ALTER TABLE '+tabela+' ADD COLUMN IF NOT EXISTS '+col+' TEXT;');
+        toast('⚠️','Coluna "'+col+'" não existe em "'+tabela+'". Execute o SQL no Supabase.');
+      } else {
+        toast('❌','Erro ao salvar ('+tabela+'): '+error.message.substring(0,80));
+      }
       return dados.id||null;
     }
+    console.log('supaInsert OK',tabela,data?.id);
     return data.id;
-  }catch(e){console.error('supaInsert error',tabela,e.message);return dados.id||null;}
+  }catch(e){
+    console.error('supaInsert EXCEPTION',tabela,e.message);
+    toast('❌','Erro crítico ao salvar ('+tabela+'): '+e.message.substring(0,50));
+    return dados.id||null;
+  }
 }
 async function supaUpdate(tabela, id, dados){
   if(!supa||!_empresaId||!id) return;
@@ -1368,8 +1420,16 @@ async function supaUpdate(tabela, id, dados){
   }
   try{
     const {error}=await supa.from(tabela).update({...dados,atualizado_em:new Date().toISOString()}).eq('id',id).eq('empresa_id',_empresaId);
-    if(error){console.error('supaUpdate',tabela,error.message);return;}
-  }catch(e){console.error('supaUpdate error',tabela,e.message);}
+    if(error){
+      console.error('supaUpdate ERRO',tabela,id,error.message,error.code);
+      toast('❌','Erro ao atualizar ('+tabela+'): '+error.message.substring(0,60));
+      return;
+    }
+    console.log('supaUpdate OK',tabela,id);
+  }catch(e){
+    console.error('supaUpdate EXCEPTION',tabela,e.message);
+    toast('❌','Erro crítico ao atualizar ('+tabela+'): '+e.message.substring(0,50));
+  }
 }
 async function supaDelete(tabela, id){
   if(!supa||!_empresaId||!id) return;
@@ -3475,8 +3535,8 @@ function driveNewFolder(){
   const novaPasta=pasta?pasta+'/'+nm.trim():'/'+nm.trim();
   // Inserir arquivo sentinela para criar a pasta
   const novoId=uuidv4();
-  const payload={id:novoId,obra_id:_drvObraId,nome:'.keep',pasta:novaPasta,tipo:'text/plain',tamanho:0,dados:''};
-  supaInsert('drive_arquivos',payload).then(()=>{
+  const payload={id:novoId,obra_id:_drvObraId,nome:'.keep',pasta:novaPasta||'',tipo:'text/plain',tamanho:0,dados:''};
+  supaInsert('drive_arquivos',{id:novoId,obra_id:_drvObraId,nome:'.keep',pasta:novaPasta||'',tipo:'text/plain',tamanho:0,dados:''}).then(()=>{
     _driveArqs.push({...payload,empresa_id:_empresaId});
     renderDrive();
   });
@@ -3495,8 +3555,8 @@ function driveUpload(e){
     const r=new FileReader();
     r.onload=ev=>{
       const novoId=uuidv4();
-      const payload={id:novoId,obra_id:_drvObraId,nome:f.name,pasta,tipo:f.type||'application/octet-stream',tamanho:f.size,dados:ev.target.result};
-      supaInsert('drive_arquivos',payload).then(()=>{
+      const payload={id:novoId,obra_id:_drvObraId,nome:f.name,pasta:pasta||'',tipo:f.type||'application/octet-stream',tamanho:f.size,dados:ev.target.result};
+      supaInsert('drive_arquivos',{id:novoId,obra_id:_drvObraId,nome:f.name,pasta:pasta||'',tipo:f.type||'application/octet-stream',tamanho:f.size,dados:ev.target.result}).then(()=>{
         _driveArqs.push({...payload,empresa_id:_empresaId});
         uploaded++;
         if(uploaded===files.filter(x=>x.size<=MAX).length) renderDrive();
@@ -4325,7 +4385,7 @@ function openModal(type,editId=null){
         const nd={id:novoId,numero,...dados,_supa:true};
         if(!DB.demandas) DB.demandas=[];
         DB.demandas.push(nd);
-        supaInsert('demandas',{id:novoId,numero,titulo:dados.titulo,descricao:dados.desc,obra_id:dados.obraId||null,categoria:dados.categoria,responsavel:dados.responsavel,prazo:dados.prazo||null,prioridade:dados.prioridade,status:dados.status,obs:dados.obs});
+        supaInsert('demandas',{id:novoId,titulo:dados.titulo,descricao:dados.desc,obra_id:dados.obraId||null,categoria:dados.categoria,responsavel:dados.responsavel,prazo:dados.prazo||null,prioridade:dados.prioridade,status:dados.status,obs:dados.obs});
       }
       save();renderDemandas();toast('✅',d?'Demanda atualizada!':'Demanda criada!');return true;
     };
