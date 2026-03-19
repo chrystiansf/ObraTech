@@ -2,8 +2,27 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ObraTech — Gestão de Obras</title>
+
+<!-- PWA Meta Tags -->
+<meta name="application-name" content="ObraTech">
+<meta name="description" content="Gestão de obras para construtoras brasileiras">
+<meta name="theme-color" content="#0b0e18" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#3d71e8" media="(prefers-color-scheme: light)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ObraTech">
+<meta name="msapplication-TileColor" content="#5b8ff9">
+<meta name="msapplication-tap-highlight" content="no">
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="/manifest.json">
+
+<!-- Apple Touch Icons (SVG inline via data URI) -->
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgcng9IjQwIiBmaWxsPSIjNWI4ZmY5Ii8+PHRleHQgeD0iOTAiIHk9IjExNSIgZm9udC1zaXplPSI5MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiPvCfj5I8L3RleHQ+PC9zdmc+">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIwIiBmaWxsPSIjNWI4ZmY5Ii8+PHRleHQgeT0iLjllbSIgZm9udC1zaXplPSI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgeD0iNTAiPvCfj5I8L3RleHQ+PC9zdmc+">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -173,7 +192,13 @@ nav{padding:4px 0;flex:1}
 /* FORM */
 .fg{display:flex;flex-direction:column;gap:3px}.lbl{font-size:11px;color:var(--txt);text-transform:uppercase;letter-spacing:.4px;font-weight:700}
 .inp,.sel,.ta{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);padding:7px 10px;color:var(--txt);font-size:13px;outline:none;transition:.15s;font-family:'DM Sans',sans-serif;width:100%}
-.inp:focus,.sel:focus,.ta:focus{border-color:var(--primary)}.ctx-item{padding:10px 14px;cursor:pointer;font-size:12px;transition:.1s;display:flex;align-items:center;gap:8px}.ctx-item:hover{background:var(--bg3)}.inp::placeholder{color:var(--txt3)}.ta{resize:vertical;min-height:65px}.sel{cursor:pointer}
+.inp:focus,.sel:focus,.ta:focus{border-color:var(--primary)}.ctx-item{padding:10px 14px;cursor:pointer;font-size:12px;transition:.1s;display:flex;align-items:center;gap:8px}.ctx-item:hover{background:var(--bg3)}
+/* PWA */
+@keyframes slideUp{from{transform:translateX(-50%) translateY(100px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+@keyframes slideDown{from{transform:translateX(-50%) translateY(0);opacity:1}to{transform:translateX(-50%) translateY(100px);opacity:0}}
+.pwa-mode #sb{padding-top:env(safe-area-inset-top,0)}
+.pwa-mode .main{padding-bottom:env(safe-area-inset-bottom,0)}
+@media(max-width:600px){.pwa-mode .page{padding:10px 8px}.pwa-mode .card{border-radius:8px}}.inp::placeholder{color:var(--txt3)}.ta{resize:vertical;min-height:65px}.sel{cursor:pointer}
 /* TABLE */
 .tbl{width:100%;border-collapse:collapse}.tbl th{padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--txt);text-align:left;border-bottom:2px solid var(--border);font-weight:700;white-space:nowrap}
 .tbl td{padding:9px 10px;font-size:12px;border-bottom:1px solid var(--border);color:var(--txt2);vertical-align:middle}.tbl tr:last-child td{border-bottom:none}.tbl tr:hover td{background:var(--bg3)}.tbl td.n{color:var(--txt);font-weight:500}
@@ -250,6 +275,113 @@ nav{padding:4px 0;flex:1}
 #toast{position:fixed;bottom:18px;right:18px;z-index:999;display:none;animation:fi .25s ease}
 .ti{background:var(--card2);border:1px solid var(--border2);border-radius:9px;padding:11px 14px;box-shadow:var(--sh);max-width:290px;font-size:13px;display:flex;align-items:center;gap:7px}
 @media(max-width:900px){.g4{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr}}
+
+/* ── TABLET (768px–1024px) ─────────────────────────────────── */
+@media(max-width:1024px){
+  :root{--sw:200px}
+  .kpi{min-width:120px}
+  .tbl th,.tbl td{padding:7px 8px;font-size:11px}
+}
+
+/* ── MOBILE (< 768px) ──────────────────────────────────────── */
+@media(max-width:768px){
+  :root{--sw:0px}
+
+  /* Layout base */
+  #app{flex-direction:column}
+  #sb{display:none !important}
+  #main{width:100vw;overflow-x:hidden}
+
+  /* Topbar mobile */
+  #topbar{padding:8px 12px;gap:6px;flex-wrap:nowrap;overflow-x:auto}
+  #topbar h1{font-size:14px;white-space:nowrap}
+  #topbar .btn:not(#btn-new):not(#theme-toggle){display:none}
+  #btn-new{font-size:12px;padding:0 10px;height:30px}
+  #theme-toggle{min-width:30px}
+
+  /* Páginas */
+  .page{padding:10px 10px 80px}
+  .card{border-radius:8px;padding:12px}
+  .ch{flex-wrap:wrap;gap:6px}
+  .ct{font-size:14px}
+
+  /* KPIs - scroll horizontal */
+  .kpis{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .kpis::-webkit-scrollbar{display:none}
+  .kpi{min-width:130px;flex-shrink:0}
+  .kv{font-size:20px}
+
+  /* Grids */
+  .g2,.g3,.g4{grid-template-columns:1fr !important}
+  .g2 .fg[style*="grid-column:span 2"]{grid-column:span 1 !important}
+  .fg[style*="grid-column:span 2"]{grid-column:span 1 !important}
+
+  /* Tabelas - scroll horizontal */
+  .tbl-wrap,.card{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tbl{min-width:500px;font-size:11px}
+  .tbl th,.tbl td{padding:7px 6px;white-space:nowrap}
+
+  /* Modais - tela cheia */
+  .ov{align-items:flex-end}
+  .mo{width:100vw !important;max-width:100vw !important;max-height:92vh;border-radius:16px 16px 0 0 !important;margin:0}
+
+  /* Botões */
+  .btn{font-size:11px;padding:0 10px}
+  .btn.sm{font-size:10px;padding:0 7px;height:26px}
+
+  /* Filtros */
+  .sel,.inp{font-size:13px;height:36px}
+
+  /* Gantt - scroll */
+  #gantt-area{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+  /* Charts menores */
+  .ch-wrap{height:180px !important}
+}
+
+/* ── BARRA NAV MOBILE ──────────────────────────────────────── */
+#mobile-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--bg2);border-top:1px solid var(--border);
+  z-index:500;padding-bottom:env(safe-area-inset-bottom,0);
+}
+#mobile-nav-items{
+  display:flex;overflow-x:auto;scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+#mobile-nav-items::-webkit-scrollbar{display:none}
+.mni{
+  flex:0 0 auto;display:flex;flex-direction:column;align-items:center;
+  padding:8px 14px 6px;gap:2px;cursor:pointer;transition:.15s;
+  min-width:60px;
+}
+.mni.on{color:var(--primary)}
+.mni:not(.on){color:var(--txt3)}
+.mni .mni-ic{font-size:20px;line-height:1}
+.mni .mni-lb{font-size:9px;font-weight:600;white-space:nowrap}
+.mni-more-panel{
+  display:none;position:fixed;bottom:60px;left:0;right:0;
+  background:var(--bg2);border-top:1px solid var(--border);
+  padding:12px;z-index:499;
+  grid-template-columns:repeat(4,1fr);gap:8px;
+}
+.mni-more-panel.open{display:grid}
+.mni-more-item{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:12px 8px;border-radius:10px;background:var(--bg3);
+  cursor:pointer;transition:.15s;
+}
+.mni-more-item:active{background:var(--card2)}
+.mni-more-item .ic{font-size:22px}
+.mni-more-item .lb{font-size:10px;font-weight:600;color:var(--txt2);text-align:center}
+
+/* Botão hamburger no topbar (só mobile) */
+#mob-menu-btn{display:none}
+@media(max-width:768px){
+  #mobile-nav{display:block}
+  #mob-menu-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);cursor:pointer;font-size:18px;flex-shrink:0}
+}
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -372,10 +504,31 @@ nav{padding:4px 0;flex:1}
     <div><div style="font-size:12px;font-weight:600" id="user-name">Configurar usuário</div><div style="font-size:10px;color:var(--txt3)" id="user-role">Clique para configurar</div></div>
   </div>
 </div>
+<div id="mobile-nav">
+  <div id="mobile-nav-items">
+    <div class="mni on" data-p="dashboard" onclick="goPage('dashboard');closeMobileMore()"><div class="mni-ic">📊</div><div class="mni-lb">Dashboard</div></div>
+    <div class="mni" data-p="obras" onclick="goPage('obras');closeMobileMore()"><div class="mni-ic">🏗️</div><div class="mni-lb">Obras</div></div>
+    <div class="mni" data-p="rdo" onclick="goPage('rdo');closeMobileMore()"><div class="mni-ic">📋</div><div class="mni-lb">RDO</div></div>
+    <div class="mni" data-p="equipe" onclick="goPage('equipe');closeMobileMore()"><div class="mni-ic">👷</div><div class="mni-lb">Equipe</div></div>
+    <div class="mni" data-p="financeiro" onclick="goPage('financeiro');closeMobileMore()"><div class="mni-ic">💰</div><div class="mni-lb">Financeiro</div></div>
+    <div class="mni" onclick="toggleMobileMore()"><div class="mni-ic">⋯</div><div class="mni-lb">Mais</div></div>
+  </div>
+  <div class="mni-more-panel" id="mni-more-panel">
+    <div class="mni-more-item" onclick="goPage('cronograma');closeMobileMore()"><div class="ic">📅</div><div class="lb">Cronograma</div></div>
+    <div class="mni-more-item" onclick="goPage('estoque');closeMobileMore()"><div class="ic">📦</div><div class="lb">Estoque</div></div>
+    <div class="mni-more-item" onclick="goPage('drive');closeMobileMore()"><div class="ic">📁</div><div class="lb">Drive</div></div>
+    <div class="mni-more-item" onclick="goPage('qualidade');closeMobileMore()"><div class="ic">✅</div><div class="lb">Qualidade</div></div>
+    <div class="mni-more-item" onclick="goPage('contratos');closeMobileMore()"><div class="ic">📑</div><div class="lb">Contratos</div></div>
+    <div class="mni-more-item" onclick="goPage('demandas');closeMobileMore()"><div class="ic">📋</div><div class="lb">Demandas</div></div>
+    <div class="mni-more-item" onclick="goPage('fornecedores');closeMobileMore()"><div class="ic">🏭</div><div class="lb">Fornecedores</div></div>
+    <div class="mni-more-item" onclick="goPage('relatorios');closeMobileMore()"><div class="ic">📈</div><div class="lb">Relatórios</div></div>
+  </div>
+</div>
 <div id="main">
   <div id="topbar">
     <h1 id="ptitle">Dashboard</h1>
     <span id="obra-tag" style="font-size:11px;color:var(--txt3)"></span>
+    <div id="mob-menu-btn" onclick="toggleMobileSidebar()" title="Menu">☰</div>
     <button class="btn" onclick="exportBackup()">💾 Backup</button>
     <button class="btn" onclick="importBackup()">📂 Restaurar</button>
     <button id="theme-toggle" onclick="toggleTheme()" title="Alternar tema claro/escuro"></button>
@@ -1550,6 +1703,28 @@ function uuidv4(){
 // Iniciar ObraTech (Supabase + auth)
 document.addEventListener("DOMContentLoaded", initObraTech);
 
+// ── Mobile Navigation ──────────────────────────────────────────
+function toggleMobileMore(){
+  const p=document.getElementById('mni-more-panel');
+  if(p) p.classList.toggle('open');
+}
+function closeMobileMore(){
+  const p=document.getElementById('mni-more-panel');
+  if(p) p.classList.remove('open');
+}
+function toggleMobileSidebar(){
+  // No mobile, abre o painel "mais" como menu completo
+  toggleMobileMore();
+}
+// Fechar painel mais ao clicar fora
+document.addEventListener('click', e=>{
+  const panel=document.getElementById('mni-more-panel');
+  const moreBtn=document.querySelector('.mni:last-child');
+  if(panel?.classList.contains('open') && !panel.contains(e.target) && !moreBtn?.contains(e.target)){
+    panel.classList.remove('open');
+  }
+});
+
 // ═══════════════════════════════════════════
 // NAV
 // ═══════════════════════════════════════════
@@ -1559,8 +1734,10 @@ const NEW_ACTIONS={obras:()=>openMocModal(),cronograma:()=>openModal('etapa'),rd
 function goPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  document.querySelectorAll('.mni').forEach(n=>n.classList.remove('on'));
   document.getElementById('p-'+id)?.classList.add('on');
   document.querySelector(`[data-p="${id}"]`)?.classList.add('on');
+  document.querySelector(`.mni[data-p="${id}"]`)?.classList.add('on');
   document.getElementById('ptitle').textContent=TITLES[id]||id;
   updateSbObra();fillSelects();
   ({dashboard:renderDash,obras:renderObras,cronograma:renderCron,rdo:renderRDO,equipe:renderEquipe,estoque:renderEstoque,financeiro:renderFin,drive:()=>{if(_drvObraId)carregarDriveArqs();else renderDrive();},qualidade:renderQual,contratos:renderContratos,relatorios:()=>{},demandas:renderDemandas,fornecedores:renderFornecedores})[id]?.();
@@ -6721,6 +6898,106 @@ window.addEventListener('load',()=>{
     </div>
   </div>
 </div>
+
+
+<script>
+// ═══════════════════════════════════════════════════════
+// PWA — Service Worker + Install Prompt
+// ═══════════════════════════════════════════════════════
+
+// Prompt de instalação PWA
+let _pwaPrompt = null;
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  _pwaPrompt = e;
+  // Mostrar banner de instalação após 3s
+  setTimeout(()=>mostrarBannerPWA(), 3000);
+});
+
+window.addEventListener('appinstalled', ()=>{
+  _pwaPrompt = null;
+  const b = document.getElementById('pwa-banner');
+  if(b) b.remove();
+  toast('🎉','ObraTech instalado no seu dispositivo!');
+});
+
+function mostrarBannerPWA(){
+  if(!_pwaPrompt) return;
+  if(localStorage.getItem('pwa_dismissed')) return;
+  if(document.getElementById('pwa-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'pwa-banner';
+  banner.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;border-radius:12px;padding:12px 18px;display:flex;align-items:center;gap:12px;z-index:9999;box-shadow:0 4px 24px rgba(91,143,249,.4);max-width:360px;width:calc(100% - 32px);animation:slideUp .3s ease';
+  banner.innerHTML = `
+    <span style="font-size:24px">🏗️</span>
+    <div style="flex:1">
+      <div style="font-weight:700;font-size:13px">Instalar ObraTech</div>
+      <div style="font-size:11px;opacity:.85">Acesse offline direto do celular</div>
+    </div>
+    <button onclick="instalarPWA()" style="background:white;color:var(--primary);border:none;border-radius:8px;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer">Instalar</button>
+    <button onclick="dispensarPWA()" style="background:transparent;border:none;color:white;font-size:18px;cursor:pointer;padding:0 4px;line-height:1">✕</button>
+  `;
+  document.body.appendChild(banner);
+}
+
+async function instalarPWA(){
+  if(!_pwaPrompt) return;
+  _pwaPrompt.prompt();
+  const {outcome} = await _pwaPrompt.userChoice;
+  if(outcome==='accepted') toast('✅','Instalando ObraTech...');
+  _pwaPrompt = null;
+  const b = document.getElementById('pwa-banner');
+  if(b) b.remove();
+}
+
+function dispensarPWA(){
+  localStorage.setItem('pwa_dismissed','1');
+  const b = document.getElementById('pwa-banner');
+  if(b) b.style.animation='slideDown .3s ease forwards';
+  setTimeout(()=>b?.remove(), 300);
+}
+
+// Detectar se já está instalado como PWA
+if(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone){
+  document.documentElement.classList.add('pwa-mode');
+  console.log('✓ Rodando como PWA instalado');
+}
+</script>
+
+<!-- Manifest PWA inline -->
+<script>
+(function(){
+  // Ícone em base64 para evitar conflito do parser HTML com tags SVG em strings JS
+  const icon192 = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjQwIiBmaWxsPSIjNWI4ZmY5Ii8+PHRleHQgeT0iMTQ0IiB4PSI5NiIgZm9udC1zaXplPSIxMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIj7wn4+SPC90ZXh0Pjwvc3ZnPg==';
+  const icon512 = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjEwMCIgZmlsbD0iIzViOGZmOSIvPjx0ZXh0IHk9IjM4MCIgeD0iMjU2IiBmb250LXNpemU9IjMyMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiPvCfj5I8L3RleHQ+PC9zdmc+';
+  const manifest = {
+    name: 'ObraTech — Gestão de Obras',
+    short_name: 'ObraTech',
+    description: 'Sistema de gestão de obras para construtoras brasileiras',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#0b0e18',
+    theme_color: '#5b8ff9',
+    orientation: 'portrait-primary',
+    categories: ['business', 'productivity'],
+    icons: [
+      { src: icon192, sizes: '192x192', type: 'image/svg+xml', purpose: 'any' },
+      { src: icon512, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+    ],
+    shortcuts: [
+      { name: 'Dashboard', url: '/?p=dashboard' },
+      { name: 'RDO Diário', url: '/?p=rdo' },
+      { name: 'Obras', url: '/?p=obras' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
+  const url = URL.createObjectURL(blob);
+  const link = document.querySelector('link[rel="manifest"]') || document.createElement('link');
+  link.rel = 'manifest';
+  link.href = url;
+  if(!link.parentNode) document.head.appendChild(link);
+})();
+</script>
 
 </body>
 </html>
