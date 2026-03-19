@@ -1862,11 +1862,16 @@ async function enviarConviteCliente(){
   if(!obrasSel.length){toast('⚠️','Selecione ao menos uma obra!');return;}
 
   closeModal();
-  toast('⏳','Enviando convite...');
+  toast('⏳','Criando acesso...');
 
   try{
-    // signUp envia email de confirmação — cliente clica no link e define sua senha
-    const senhaTemp = Math.random().toString(36).slice(-8)+'Aa1!';
+    // Gerar senha provisória legível
+    const palavras=['Obra','Casa','Torre','Plaza','Vila','Rio','Sol','Mar'];
+    const palavra=palavras[Math.floor(Math.random()*palavras.length)];
+    const num=Math.floor(Math.random()*900)+100;
+    const senhaTemp=palavra+num+'!';
+
+    // Criar usuário no Supabase Auth
     const {data:authData, error:authErr} = await supa.auth.signUp({
       email,
       password: senhaTemp,
@@ -1876,14 +1881,20 @@ async function enviarConviteCliente(){
       }
     });
 
+    // 409 = usuário já existe — tentar buscar o id existente
+    if(authErr && (authErr.status===409||authErr.message?.includes('already registered'))){
+      toast('⚠️','Este email já tem cadastro no sistema. Use "Gerenciar Obras" para atualizar as permissões.');
+      renderClientes();
+      return;
+    }
     if(authErr) throw authErr;
 
     const userId = authData?.user?.id;
-    if(!userId) throw new Error('Não foi possível criar o usuário. O email já pode estar cadastrado.');
+    if(!userId) throw new Error('Não foi possível criar o usuário.');
 
-    // Criar/atualizar perfil do cliente
+    // Criar perfil — apenas colunas que existem na tabela
     const {error:perfErr} = await supa.from('perfis').upsert({
-      id:userId, empresa_id:_empresaId, nome, email, papel:'cliente'
+      id:userId, empresa_id:_empresaId, nome, papel:'cliente'
     },{onConflict:'id'});
     if(perfErr) console.warn('Perfil upsert:', perfErr.message);
 
@@ -1894,7 +1905,51 @@ async function enviarConviteCliente(){
       },{onConflict:'cliente_id,obra_id'});
     }
 
-    toast('✅','Convite enviado para '+email+'! O cliente receberá um email de confirmação para acessar o portal.');
+    // Mostrar credenciais para o gestor compartilhar com o cliente
+    const root=document.getElementById('modal-root');
+    const url=window.location.origin;
+    root.innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()">
+      <div class="mo" style="max-width:480px">
+        <div class="moh"><div class="mot">✅ Acesso Criado</div><div class="mox" onclick="closeModal()">✕</div></div>
+        <div class="mob">
+          <div style="background:var(--bg3);border-radius:10px;padding:16px;margin-bottom:16px">
+            <div style="font-size:12px;color:var(--txt3);margin-bottom:10px">Compartilhe estas credenciais com <strong style="color:var(--txt)">${nome}</strong>:</div>
+            <div style="display:grid;gap:8px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:var(--txt3)">🌐 Endereço:</span>
+                <span style="font-size:13px;font-weight:600;color:var(--primary)">${url}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:var(--txt3)">📧 Email:</span>
+                <span style="font-size:13px;font-weight:600">${email}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:var(--txt3)">🔑 Senha provisória:</span>
+                <span style="font-size:15px;font-weight:700;color:var(--accent);letter-spacing:1px">${senhaTemp}</span>
+              </div>
+            </div>
+          </div>
+          <div style="background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:16px" id="msg-copiar">
+            <div style="font-size:11px;color:var(--txt3);margin-bottom:6px">Mensagem pronta para enviar:</div>
+            <div style="font-size:12px;line-height:1.6;color:var(--txt2)">
+              Olá ${nome}! Seu acesso ao portal da obra está pronto.<br>
+              🌐 Acesse: <strong>${url}</strong><br>
+              📧 Email: <strong>${email}</strong><br>
+              🔑 Senha: <strong>${senhaTemp}</strong><br>
+              Recomendamos trocar a senha após o primeiro acesso.
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--yellow)">⚠️ Anote a senha — ela não poderá ser recuperada aqui.</div>
+        </div>
+        <div class="mof">
+          <button class="btn pri" onclick="
+            const t=document.getElementById('msg-copiar').innerText;
+            navigator.clipboard?.writeText(t).then(()=>toast('📋','Mensagem copiada!'));
+          ">📋 Copiar Mensagem</button>
+          <button class="btn" onclick="closeModal()">✓ Fechar</button>
+        </div>
+      </div></div>`;
+
     renderClientes();
   }catch(e){
     console.error('Erro convite:', e);
