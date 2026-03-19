@@ -1963,7 +1963,7 @@ async function enviarConviteCliente(){
   if(!obrasSel.length){toast('⚠️','Selecione ao menos uma obra!');return;}
 
   closeModal();
-  toast('⏳','Criando acesso...');
+  toast('⏳','Criando acesso do cliente...');
 
   try{
     // Gerar senha provisória legível
@@ -1971,103 +1971,120 @@ async function enviarConviteCliente(){
     const palavra=palavras[Math.floor(Math.random()*palavras.length)];
     const num=Math.floor(Math.random()*900)+100;
     const senhaTemp=palavra+num+'!';
+    const url=window.location.origin;
 
-    // Criar usuário no Supabase Auth
+    // ETAPA 1: Criar usuário no Supabase Auth
+    // IMPORTANTE: Desative "Confirm email" em Authentication → Providers → Email
     const {data:authData, error:authErr} = await supa.auth.signUp({
       email,
       password: senhaTemp,
       options:{
         data:{nome, papel:'cliente', empresa_id:_empresaId},
-        emailRedirectTo: window.location.origin
+        emailRedirectTo: url
       }
     });
 
-    // 409 = usuário já existe — tentar buscar o id existente
-    if(authErr && (authErr.status===409||authErr.message?.includes('already registered'))){
-      toast('⚠️','Este email já tem cadastro no sistema. Use "Gerenciar Obras" para atualizar as permissões.');
+    // Usuário já existe
+    if(authErr?.message?.includes('already registered')||authErr?.status===409){
+      // Buscar perfil existente e atualizar obras
+      const {data:perfExist}=await supa.from('perfis').select('id').eq('empresa_id',_empresaId).ilike('nome',nome).maybeSingle();
+      toast('⚠️','Email já cadastrado. Atualize as permissões pelo botão 🏗️ Obras.');
       renderClientes();
       return;
     }
     if(authErr) throw authErr;
 
-    const userId = authData?.user?.id;
-    console.log('Auth user criado:', userId, 'identities:', authData?.user?.identities?.length);
-    if(!userId) throw new Error('Não foi possível criar o usuário. Verifique se o email já está cadastrado.');
+    const userId=authData?.user?.id;
+    if(!userId) throw new Error('Usuário não criado. Verifique se desativou "Confirm email" no Supabase.');
 
-    // Criar perfil — aguardar um momento para o trigger do Supabase rodar
-    await new Promise(r=>setTimeout(r,800));
+    // ETAPA 2: Criar perfil do cliente
+    await new Promise(r=>setTimeout(r,500));
+    const {error:pe}=await supa.from('perfis').upsert(
+      {id:userId, empresa_id:_empresaId, nome, papel:'cliente'},
+      {onConflict:'id'}
+    );
+    if(pe) console.error('Perfil erro:',pe.message);
 
-    // Inserir ou atualizar perfil
-    const {data:perfData, error:perfErr} = await supa.from('perfis').upsert({
-      id:userId, empresa_id:_empresaId, nome, papel:'cliente'
-    },{onConflict:'id'}).select();
-    if(perfErr){
-      console.error('Perfil upsert erro:', perfErr.message, perfErr.code);
-      // Tentar insert direto se upsert falhou
-      const {error:perfErr2} = await supa.from('perfis').insert({
-        id:userId, empresa_id:_empresaId, nome, papel:'cliente'
-      });
-      if(perfErr2) console.error('Perfil insert erro:', perfErr2.message);
-    } else {
-      console.log('Perfil criado/atualizado:', perfData);
-    }
-
-    // Liberar obras selecionadas
+    // ETAPA 3: Liberar obras
     for(const obraId of obrasSel){
-      await supa.from('cliente_obras').upsert({
-        empresa_id:_empresaId, cliente_id:userId, obra_id:obraId
-      },{onConflict:'cliente_id,obra_id'});
+      await supa.from('cliente_obras').upsert(
+        {empresa_id:_empresaId, cliente_id:userId, obra_id:obraId},
+        {onConflict:'cliente_id,obra_id'}
+      );
     }
 
-    // Mostrar credenciais para o gestor compartilhar com o cliente
+    // ETAPA 4: Enviar email de boas-vindas via resetPasswordForEmail
+    // Isso envia um link mágico que confirma o email E permite acesso direto
+    await supa.auth.resetPasswordForEmail(email, {
+      redirectTo: url+'?portal=cliente'
+    });
+
+    // ETAPA 5: Mostrar credenciais + mensagem para o gestor
+    const obrasSelecionadas=obrasSel.map(id=>DB.obras.find(o=>o.id===id)?.nome||'').filter(Boolean).join(', ');
     const root=document.getElementById('modal-root');
-    const url=window.location.origin;
+    const msgTexto=`Olá, ${nome}!
+
+Seu acesso ao Portal do Cliente foi criado.
+
+🌐 Acesse: ${url}
+📧 Email: ${email}
+🔑 Senha: ${senhaTemp}
+
+Obras disponíveis: ${obrasSelecionadas}
+
+⚠️ IMPORTANTE: Se receber um email do sistema pedindo confirmação, ignore-o. Use apenas as credenciais acima para acessar.
+
+Após o primeiro acesso, recomendamos trocar a senha em Configurações.`;
+
     root.innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()">
-      <div class="mo" style="max-width:480px">
-        <div class="moh"><div class="mot">✅ Acesso Criado</div><div class="mox" onclick="closeModal()">✕</div></div>
+      <div class="mo" style="max-width:500px">
+        <div class="moh">
+          <div class="mot">✅ Acesso Criado com Sucesso</div>
+          <div class="mox" onclick="closeModal()">✕</div>
+        </div>
         <div class="mob">
-          <div style="background:var(--bg3);border-radius:10px;padding:16px;margin-bottom:16px">
-            <div style="font-size:12px;color:var(--txt3);margin-bottom:10px">Compartilhe estas credenciais com <strong style="color:var(--txt)">${nome}</strong>:</div>
+          <!-- Credenciais -->
+          <div style="background:linear-gradient(135deg,var(--primary),#7b5cf0);border-radius:12px;padding:18px;margin-bottom:14px;color:white">
+            <div style="font-size:11px;opacity:.8;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Credenciais de acesso — ${nome}</div>
             <div style="display:grid;gap:8px">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <span style="font-size:12px;color:var(--txt3)">🌐 Endereço:</span>
-                <span style="font-size:13px;font-weight:600;color:var(--primary)">${url}</span>
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.1);border-radius:8px;padding:8px 12px">
+                <span style="font-size:11px;opacity:.8">🌐 Endereço</span>
+                <span style="font-size:12px;font-weight:700">${url}</span>
               </div>
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <span style="font-size:12px;color:var(--txt3)">📧 Email:</span>
-                <span style="font-size:13px;font-weight:600">${email}</span>
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.1);border-radius:8px;padding:8px 12px">
+                <span style="font-size:11px;opacity:.8">📧 Email</span>
+                <span style="font-size:13px;font-weight:700">${email}</span>
               </div>
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <span style="font-size:12px;color:var(--txt3)">🔑 Senha provisória:</span>
-                <span style="font-size:15px;font-weight:700;color:var(--accent);letter-spacing:1px">${senhaTemp}</span>
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.15);border-radius:8px;padding:8px 12px">
+                <span style="font-size:11px;opacity:.8">🔑 Senha</span>
+                <span style="font-size:16px;font-weight:800;letter-spacing:2px">${senhaTemp}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.1);border-radius:8px;padding:8px 12px">
+                <span style="font-size:11px;opacity:.8">🏗️ Obras</span>
+                <span style="font-size:11px;font-weight:600">${obrasSelecionadas}</span>
               </div>
             </div>
           </div>
-          <div style="background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:16px" id="msg-copiar">
-            <div style="font-size:11px;color:var(--txt3);margin-bottom:6px">Mensagem pronta para enviar:</div>
-            <div style="font-size:12px;line-height:1.6;color:var(--txt2)">
-              Olá ${nome}! Seu acesso ao portal da obra está pronto.<br>
-              🌐 Acesse: <strong>${url}</strong><br>
-              📧 Email: <strong>${email}</strong><br>
-              🔑 Senha: <strong>${senhaTemp}</strong><br>
-              Recomendamos trocar a senha após o primeiro acesso.
-            </div>
+          <!-- Mensagem pronta -->
+          <div style="background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:12px">
+            <div style="font-size:11px;color:var(--txt3);margin-bottom:6px;font-weight:600">📋 Mensagem pronta para WhatsApp/Email:</div>
+            <div id="msg-convite" style="font-size:12px;line-height:1.7;color:var(--txt2);white-space:pre-line">${msgTexto}</div>
           </div>
-          <div style="font-size:11px;color:var(--yellow)">⚠️ Anote a senha — ela não poderá ser recuperada aqui.</div>
+          <div style="background:var(--yglow);border:1px solid var(--yellow);border-radius:8px;padding:10px;font-size:11px;color:var(--txt2)">
+            ⚠️ <strong>Importante:</strong> Vá em <strong>Supabase → Authentication → Providers → Email</strong> e desmarque <strong>"Confirm email"</strong> para que a senha funcione imediatamente.
+          </div>
         </div>
         <div class="mof">
-          <button class="btn pri" onclick="
-            const t=document.getElementById('msg-copiar').innerText;
-            navigator.clipboard?.writeText(t).then(()=>toast('📋','Mensagem copiada!'));
-          ">📋 Copiar Mensagem</button>
-          <button class="btn" onclick="closeModal()">✓ Fechar</button>
+          <button class="btn pri" onclick="(()=>{const t=document.getElementById('msg-convite').innerText;navigator.clipboard?.writeText(t).then(()=>toast('📋','Mensagem copiada! Cole no WhatsApp ou email.'));})()">
+            📋 Copiar Mensagem
+          </button>
+          <button class="btn" onclick="closeModal();renderClientes()">✓ Fechar</button>
         </div>
       </div></div>`;
 
-    renderClientes();
   }catch(e){
     console.error('Erro convite:', e);
-    toast('❌','Erro: '+e.message.substring(0,80));
+    toast('❌','Erro: '+e.message.substring(0,100));
   }
 }
 
