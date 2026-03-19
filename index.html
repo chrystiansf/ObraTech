@@ -1034,7 +1034,7 @@ nav{padding:4px 0;flex:1}
   <div class="card">
     <div class="ch">
       <div><div class="ct">👤 Portal Clientes</div><div class="cs">Convide clientes para acompanhar as obras</div></div>
-      <button class="btn sm pri" onclick="openModal('convite-cliente')">✉️ Convidar Cliente</button>
+      <button class="btn sm pri" onclick="abrirModalConvite()">✉️ Convidar Cliente</button>
     </div>
     <div id="clientes-lista" style="margin-top:12px"></div>
   </div>
@@ -1794,9 +1794,9 @@ async function revogarCliente(clienteId){
 }
 
 // Modal de convite de cliente
-const _openModalOrig = openModal;
-function openModal(type, editId=null){
-  if(type==='convite-cliente'){
+function abrirModalConvite(){
+  const type='convite-cliente';
+  if(true){
     const root=document.getElementById('modal-root');
     const obrasOpts=DB.obras.map(o=>`
       <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px">
@@ -1824,7 +1824,7 @@ function openModal(type, editId=null){
   }
   if(type==='permissoes-cliente'){
     const cliente=_clientes.find(c=>c.id===editId);
-    if(!cliente) return;
+    if(!cliente){return;}
     const root=document.getElementById('modal-root');
     supa.from('cliente_obras').select('obra_id').eq('cliente_id',editId).eq('empresa_id',_empresaId)
       .then(({data:perms})=>{
@@ -1849,7 +1849,7 @@ function openModal(type, editId=null){
       });
     return;
   }
-  _openModalOrig(type, editId);
+  // outros tipos tratados pelo openModal principal
 }
 
 async function enviarConviteCliente(){
@@ -1865,35 +1865,40 @@ async function enviarConviteCliente(){
   toast('⏳','Enviando convite...');
 
   try{
-    // Criar usuário via Supabase Auth (envia email de confirmação automaticamente)
-    const {data:authData, error:authErr} = await supa.auth.admin?.inviteUserByEmail
-      ? supa.auth.admin.inviteUserByEmail(email, {data:{nome,papel:'cliente',empresa_id:_empresaId}})
-      : supa.auth.signUp({email, password: Math.random().toString(36).slice(-10)+'A1!',
-          options:{data:{nome,papel:'cliente',empresa_id:_empresaId},
-          emailRedirectTo: window.location.origin}});
+    // signUp envia email de confirmação — cliente clica no link e define sua senha
+    const senhaTemp = Math.random().toString(36).slice(-8)+'Aa1!';
+    const {data:authData, error:authErr} = await supa.auth.signUp({
+      email,
+      password: senhaTemp,
+      options:{
+        data:{nome, papel:'cliente', empresa_id:_empresaId},
+        emailRedirectTo: window.location.origin
+      }
+    });
 
     if(authErr) throw authErr;
 
     const userId = authData?.user?.id;
-    if(!userId) throw new Error('Usuário não criado');
+    if(!userId) throw new Error('Não foi possível criar o usuário. O email já pode estar cadastrado.');
 
-    // Criar perfil do cliente
-    await supa.from('perfis').upsert({
+    // Criar/atualizar perfil do cliente
+    const {error:perfErr} = await supa.from('perfis').upsert({
       id:userId, empresa_id:_empresaId, nome, email, papel:'cliente'
-    });
+    },{onConflict:'id'});
+    if(perfErr) console.warn('Perfil upsert:', perfErr.message);
 
-    // Liberar obras
+    // Liberar obras selecionadas
     for(const obraId of obrasSel){
       await supa.from('cliente_obras').upsert({
         empresa_id:_empresaId, cliente_id:userId, obra_id:obraId
-      });
+      },{onConflict:'cliente_id,obra_id'});
     }
 
-    toast('✅','Convite enviado para '+email+'! O cliente receberá um email para criar a senha.');
+    toast('✅','Convite enviado para '+email+'! O cliente receberá um email de confirmação para acessar o portal.');
     renderClientes();
   }catch(e){
     console.error('Erro convite:', e);
-    toast('❌','Erro ao enviar convite: '+e.message.substring(0,60));
+    toast('❌','Erro: '+e.message.substring(0,80));
   }
 }
 
@@ -4334,6 +4339,35 @@ function delNC(id){if(!confirm('Excluir NC?'))return;if(typeof id==='string'&&id
 function openModal(type,editId=null){
   const root=document.getElementById('modal-root');
   let title='',body='',onSave=null;
+
+  // Portal clientes modals
+  if(type==='permissoes-cliente'){
+    const cliente=_clientes?.find(c=>c.id===editId);
+    if(!cliente){toast('⚠️','Cliente não encontrado.');return;}
+    if(!supa||!_empresaId) return;
+    supa.from('cliente_obras').select('obra_id').eq('cliente_id',editId).eq('empresa_id',_empresaId)
+      .then(({data:perms})=>{
+        const liberadas=new Set((perms||[]).map(p=>p.obra_id));
+        const obrasOpts=DB.obras.map(o=>`
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px">
+            <input type="checkbox" class="perm-obra-chk" value="${o.id}" ${liberadas.has(o.id)?'checked':''} style="width:16px;height:16px">
+            ${o.nome}
+          </label>`).join('');
+        root.innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()">
+          <div class="mo">
+            <div class="moh"><div class="mot">🏗️ Obras de ${cliente.nome}</div><div class="mox" onclick="closeModal()">✕</div></div>
+            <div class="mob">
+              <p style="font-size:12px;color:var(--txt3);margin-bottom:12px">Selecione quais obras este cliente pode visualizar:</p>
+              <div style="background:var(--bg3);border-radius:8px;padding:10px;max-height:260px;overflow-y:auto">${obrasOpts||'<div style="color:var(--txt3);font-size:12px">Nenhuma obra cadastrada</div>'}</div>
+            </div>
+            <div class="mof">
+              <button class="btn" onclick="closeModal()">Cancelar</button>
+              <button class="btn pri" onclick="salvarPermissoesCliente('${editId}')">✅ Salvar Permissões</button>
+            </div>
+          </div></div>`;
+      });
+    return;
+  }
 
   if(type==='obra'){
     const o=editId?DB.obras.find(x=>String(x.id)===String(editId)):null;
