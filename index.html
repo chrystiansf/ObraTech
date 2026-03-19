@@ -1059,6 +1059,7 @@ nav{padding:4px 0;flex:1}
   <div class="card">
     <div class="ch">
       <div><div class="ct">👤 Portal Clientes</div><div class="cs">Convide clientes para acompanhar as obras</div></div>
+      <button class="btn sm" onclick="sincronizarClientes()">🔄 Sincronizar</button>
       <button class="btn sm pri" onclick="abrirModalConvite()">✉️ Convidar Cliente</button>
     </div>
     <div id="clientes-lista" style="margin-top:12px"></div>
@@ -1777,7 +1778,16 @@ async function renderClientes(){
     _clientes = clientes||[];
 
     if(!_clientes.length){
-      el.innerHTML='<div class="t-empty">Nenhum cliente cadastrado. Clique em "Convidar Cliente" para começar.</div>';
+      // Verificar se existem usuários com papel cliente no auth metadata
+      el.innerHTML=`<div class="t-empty" style="padding:20px">
+        <div style="margin-bottom:12px">Nenhum cliente encontrado na tabela perfis.</div>
+        <div style="font-size:11px;color:var(--txt3);margin-bottom:12px">
+          Se você convidou clientes recentemente, clique em Sincronizar para verificar.
+        </div>
+        <button class="btn sm" onclick="sincronizarClientes()">🔄 Sincronizar</button>
+      <button class="btn sm pri" onclick="abrirModalConvite()">✉️ Convidar Cliente</button>
+        <button class="btn sm" onclick="sincronizarClientes()" style="margin-left:8px">🔄 Sincronizar</button>
+      </div>`;
       return;
     }
 
@@ -1835,6 +1845,44 @@ async function renderClientes(){
     </div>`;
   }catch(e){
     el.innerHTML='<div class="al e">Erro ao carregar clientes: '+e.message+'</div>';
+  }
+}
+
+async function sincronizarClientes(){
+  if(!supa||!_empresaId){toast('⚠️','Sem conexão com banco.');return;}
+  toast('⏳','Verificando clientes...');
+  try{
+    // Buscar todos os perfis da empresa para debug
+    const {data:todos,error} = await supa.from('perfis')
+      .select('*').eq('empresa_id',_empresaId);
+    if(error) throw error;
+
+    console.log('Todos os perfis da empresa:', todos);
+    const papeis=todos.map(p=>`${p.nome}: ${p.papel}`).join(', ');
+    console.log('Papéis:', papeis);
+
+    // Verificar quantos têm papel cliente
+    const clientes=todos.filter(p=>p.papel==='cliente');
+    console.log('Clientes encontrados:', clientes.length);
+
+    if(clientes.length>0){
+      toast('✅', clientes.length+' cliente(s) encontrado(s). Recarregando...');
+      renderClientes();
+    } else {
+      toast('ℹ️','Nenhum perfil com papel "cliente" encontrado. Total de perfis: '+todos.length);
+      // Mostrar diagnóstico
+      const el=document.getElementById('clientes-lista');
+      if(el) el.innerHTML+=`<div class="al i" style="margin-top:12px">
+        <div style="font-size:12px">
+          <strong>Diagnóstico:</strong> ${todos.length} perfil(s) encontrado(s) nesta empresa.<br>
+          Papéis: ${[...new Set(todos.map(p=>p.papel))].join(', ')||'nenhum'}<br>
+          <br>Se você enviou convites, verifique se o upsert na tabela "perfis" foi bem-sucedido abrindo o Supabase → Table Editor → perfis.
+        </div>
+      </div>`;
+    }
+  }catch(e){
+    console.error('Erro sincronizar:', e);
+    toast('❌','Erro: '+e.message);
   }
 }
 
@@ -1943,13 +1991,26 @@ async function enviarConviteCliente(){
     if(authErr) throw authErr;
 
     const userId = authData?.user?.id;
-    if(!userId) throw new Error('Não foi possível criar o usuário.');
+    console.log('Auth user criado:', userId, 'identities:', authData?.user?.identities?.length);
+    if(!userId) throw new Error('Não foi possível criar o usuário. Verifique se o email já está cadastrado.');
 
-    // Criar perfil — apenas colunas que existem na tabela
-    const {error:perfErr} = await supa.from('perfis').upsert({
+    // Criar perfil — aguardar um momento para o trigger do Supabase rodar
+    await new Promise(r=>setTimeout(r,800));
+
+    // Inserir ou atualizar perfil
+    const {data:perfData, error:perfErr} = await supa.from('perfis').upsert({
       id:userId, empresa_id:_empresaId, nome, papel:'cliente'
-    },{onConflict:'id'});
-    if(perfErr) console.warn('Perfil upsert:', perfErr.message);
+    },{onConflict:'id'}).select();
+    if(perfErr){
+      console.error('Perfil upsert erro:', perfErr.message, perfErr.code);
+      // Tentar insert direto se upsert falhou
+      const {error:perfErr2} = await supa.from('perfis').insert({
+        id:userId, empresa_id:_empresaId, nome, papel:'cliente'
+      });
+      if(perfErr2) console.error('Perfil insert erro:', perfErr2.message);
+    } else {
+      console.log('Perfil criado/atualizado:', perfData);
+    }
 
     // Liberar obras selecionadas
     for(const obraId of obrasSel){
