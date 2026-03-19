@@ -1124,6 +1124,7 @@ async function enviarReset(){
 
 // ── Auth: logout ──────────────────────────────────────────────
 async function logout(){
+  window._sessaoAtiva = false;
   await supa.auth.signOut();
   _usuarioAtual = null;
   _empresaId = null;
@@ -1171,9 +1172,9 @@ async function iniciarSessao(session){
     _usuarioAtual = session.user;
     console.log('Buscando perfil...');
 
-    // Buscar perfil com timeout de 8 segundos
+    // Buscar perfil com timeout de 20 segundos
     const perfPromise = supa.from('perfis').select('*').eq('id', session.user.id).maybeSingle();
-    const timeoutPromise = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000));
+    const timeoutPromise = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),20000));
     const {data:perfil, error:perfErr} = await Promise.race([perfPromise, timeoutPromise]);
 
     console.log('Perfil recebido:', JSON.stringify(perfil), 'Erro:', perfErr?.message);
@@ -1206,8 +1207,19 @@ async function iniciarSessao(session){
     }
   } catch(e){
     console.error('Erro em iniciarSessao:', e.message);
-    mostrarLogin();
-    authMsg('Erro ao carregar perfil: '+e.message,'error');
+    // Timeout ou erro de rede não deve deslogar — apenas avisar
+    if(e.message==='timeout'||e.message?.includes('fetch')||e.message?.includes('network')){
+      // Se já tem dados carregados, mantém o app aberto
+      if(_empresaId){
+        toast('⚠️','Conexão lenta. Tente recarregar se algo não aparecer.');
+        return;
+      }
+      mostrarLogin();
+      authMsg('Servidor demorou para responder. Verifique sua conexão.','error');
+    } else {
+      mostrarLogin();
+      authMsg('Erro ao carregar perfil: '+e.message,'error');
+    }
   }
 }
 
@@ -1889,9 +1901,19 @@ function delMov(id){if(!confirm('Excluir movimentação?'))return;const mov=DB.m
 
 function delObra(id){
   if(!confirm('Excluir esta obra e todos os dados relacionados?'))return;
-  if(typeof id==='string'&&id.includes('-')){
-    // Excluir no Supabase (cascade cuida das tabelas relacionadas)
-    supaDelete('obras',id);
+  if(typeof id==='string'&&id.includes('-')&&supa&&_empresaId){
+    // Deletar registros filhos antes (FK constraints)
+    (async()=>{
+      const eq=t=>supa.from(t).delete().eq('empresa_id',_empresaId).eq('obra_id',id);
+      await eq('pontos');
+      await eq('rdos');
+      await eq('lancamentos');
+      await eq('etapas');
+      await eq('movimentacoes');
+      await eq('nao_conformidades');
+      await eq('contratos');
+      await supa.from('obras').delete().eq('empresa_id',_empresaId).eq('id',id);
+    })();
   }
   // Limpar DB local
   DB.obras=DB.obras.filter(o=>String(o.id)!==String(id));
@@ -3812,7 +3834,7 @@ function openModal(type,editId=null){
     title=e?'Editar Etapa':'📅 Nova Etapa';
     body=`<div class="g g2">
       <div class="fg" style="grid-column:span 2"><label class="lbl">Nome da Etapa *</label><input class="inp" id="e-nome" value="${e?.nome||''}" placeholder="Ex: Fundações, Alvenaria..."></div>
-      <div class="fg"><label class="lbl">Obra</label><select class="sel" id="e-obra">${DB.obras.map(o=>`<option value="${o.id}" ${(e?.obraId||obra?.id)==o.id?'selected':''}>${o.nome}</option>`).join('')}</select></div>
+      <div class="fg"><label class="lbl">Obra</label><select class="sel" id="e-obra">${DB.obras.map(o=>`<option value="${o.id}" ${String(e?.obraId||obra?.id||'')==String(o.id)?'selected':''}>${o.nome}</option>`).join('')}</select></div>
       <div class="fg"><label class="lbl">Status</label><select class="sel" id="e-status"><option value="plan" ${e?.status==='plan'?'selected':''}>Planejado</option><option value="prog" ${e?.status==='prog'?'selected':''}>Em andamento</option><option value="done" ${e?.status==='done'?'selected':''}>Concluído</option><option value="late" ${e?.status==='late'?'selected':''}>Atrasado</option></select></div>
       <div class="fg"><label class="lbl">Início</label><input type="date" class="inp" id="e-ini" value="${e?.inicio||''}"></div>
       <div class="fg"><label class="lbl">Fim Previsto</label><input type="date" class="inp" id="e-fim" value="${e?.fim||''}"></div>
@@ -3824,13 +3846,13 @@ function openModal(type,editId=null){
       const pct=Math.min(100,Math.max(0,parseInt(document.getElementById('e-pct').value)||0));
       const status=document.getElementById('e-status').value;
       const obraId=document.getElementById('e-obra').value;
-      const totalEts=DB.etapas.filter(et=>et.obraId===obraId);
+      const totalEts=DB.etapas.filter(et=>String(et.obraId)===String(obraId));
       const idx=totalEts.findIndex(et=>et.id===editId);
       const n=totalEts.length+(editId?0:1);const sp=editId?totalEts[idx].sp:Math.round(totalEts.length/n*100)||0;const wp=Math.round(100/Math.max(n,1));
       const dados={nome,obraId,status,inicio:document.getElementById('e-ini').value,fim:document.getElementById('e-fim').value,pct,resp:document.getElementById('e-resp').value.trim(),sp,wp};
       if(e){
         Object.assign(e,dados);
-        supaUpdate('etapas',e.id,{nome:dados.nome,status:dados.status,pct:dados.pct,responsavel:dados.resp,inicio:dados.inicio||null,fim:dados.fim||null,sp:dados.sp,wp:dados.wp});
+        supaUpdate('etapas',e.id,{obra_id:dados.obraId||null,nome:dados.nome,status:dados.status,pct:dados.pct,responsavel:dados.resp,inicio:dados.inicio||null,fim:dados.fim||null,sp:dados.sp,wp:dados.wp});
       } else {
         const newE={id:uuidv4(),...dados,_supa:true};
         DB.etapas.push(newE);
@@ -4284,7 +4306,7 @@ function openModal(type,editId=null){
       const dados={titulo,desc:document.getElementById('dem-desc').value.trim(),obraId:document.getElementById('dem-obra').value||null,categoria:document.getElementById('dem-cat').value.trim(),responsavel:document.getElementById('dem-resp').value.trim(),prazo:document.getElementById('dem-prazo').value||null,prioridade:document.getElementById('dem-prior').value,status:document.getElementById('dem-status').value,obs:document.getElementById('dem-obs').value.trim()};
       if(d){
         Object.assign(d,dados);
-        supaUpdate('demandas',d.id,dados);
+        supaUpdate('demandas',d.id,{titulo:dados.titulo,descricao:dados.desc,obra_id:dados.obraId||null,categoria:dados.categoria,responsavel:dados.responsavel,prazo:dados.prazo||null,prioridade:dados.prioridade,status:dados.status,obs:dados.obs});
       } else {
         const novoId=uuidv4();
         // Gerar número sequencial baseado no maior número existente
@@ -4293,7 +4315,7 @@ function openModal(type,editId=null){
         const nd={id:novoId,numero,...dados,_supa:true};
         if(!DB.demandas) DB.demandas=[];
         DB.demandas.push(nd);
-        supaInsert('demandas',{id:novoId,numero,...dados});
+        supaInsert('demandas',{id:novoId,numero,titulo:dados.titulo,descricao:dados.desc,obra_id:dados.obraId||null,categoria:dados.categoria,responsavel:dados.responsavel,prazo:dados.prazo||null,prioridade:dados.prioridade,status:dados.status,obs:dados.obs});
       }
       save();renderDemandas();toast('✅',d?'Demanda atualizada!':'Demanda criada!');return true;
     };
@@ -6190,11 +6212,20 @@ async function initObraTech(){
   
   // Escutar mudanças de sessão
   supa.auth.onAuthStateChange(async (event, session) => {
-    if(event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED'){
+    if(event === 'TOKEN_REFRESHED'){
+      // Apenas atualiza o token internamente — não reinicializa a sessão
+      if(session) _usuarioAtual = session.user;
+      return;
+    }
+    if(event === 'SIGNED_IN'){
+      // Evita reinicializar se já estiver logado (troca de aba, foco, etc)
+      if(window._sessaoAtiva) return;
+      window._sessaoAtiva = true;
       await iniciarSessao(session);
       iniciarRealtime();
       adicionarBotaoLogout();
     } else if(event === 'SIGNED_OUT'){
+      window._sessaoAtiva = false;
       mostrarLogin();
     }
   });
