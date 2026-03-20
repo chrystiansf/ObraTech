@@ -1507,15 +1507,35 @@ async function iniciarSessao(session){
     }
   } catch(e){
     console.error('Erro em iniciarSessao:', e.message);
-    // Timeout ou erro de rede não deve deslogar — apenas avisar
+    // Timeout ou erro de rede — NUNCA mostrar login se sessão é válida
     if(e.message==='timeout'||e.message?.includes('fetch')||e.message?.includes('network')){
-      // Se já tem dados carregados, mantém o app aberto
-      if(_empresaId){
-        toast('⚠️','Conexão lenta. Tente recarregar se algo não aparecer.');
+      // Tentar usar cache local antes de desistir
+      const cachedEmpresa = localStorage.getItem('_ot_empresa_id');
+      const cachedPapel = localStorage.getItem('_ot_papel');
+      const cachedNome = localStorage.getItem('_ot_nome');
+      if(cachedEmpresa && cachedPapel && cachedNome){
+        _empresaId = cachedEmpresa;
+        _papelAtual = cachedPapel;
+        DB.user.nome = cachedNome;
+        _atualizarSidebar(cachedNome, cachedPapel);
+        if(cachedPapel==='cliente'){
+          mostrarApp();
+          const unEl=document.getElementById('pc-user-nome');
+          if(unEl) unEl.textContent=cachedNome;
+          toast('👋','Bem-vindo, '+cachedNome.split(' ')[0]+'!');
+          carregarDadosCliente(_usuarioAtual?.id);
+        } else {
+          mostrarApp();
+          renderDash(); fillSelects(); renderObras();
+          toast('⚠️','Conexão lenta — usando dados locais.');
+          carregarDadosSupabase().then(()=>{renderDash();fillSelects();renderObras();});
+        }
         return;
       }
-      mostrarLogin();
-      authMsg('Servidor demorou para responder. Verifique sua conexão.','error');
+      // Sem cache: mostrar loading e tentar de novo
+      toast('⚠️','Conexão lenta, aguarde...');
+      setTimeout(()=>iniciarSessao(_usuarioAtual?{user:_usuarioAtual}:null), 3000);
+      return;
     } else {
       mostrarLogin();
       authMsg('Erro ao carregar perfil: '+e.message,'error');
