@@ -1355,12 +1355,101 @@ async function fazerCadastro(){
 }
 
 // ── Auth: reset senha ─────────────────────────────────────────
+function mostrarTelaNovaSenha(session){
+  window._aguardandoNovaSenha = true;
+  // Ocultar tudo e mostrar tela de nova senha
+  document.getElementById('app').style.display='none';
+  document.getElementById('portal-cliente').style.display='none';
+  document.getElementById('loading-screen').style.display='none';
+  const authEl = document.getElementById('auth-screen');
+  authEl.style.display='flex';
+  authEl.innerHTML=`
+  <div style="background:#fff;border-radius:16px;padding:40px 36px;width:100%;max-width:420px;box-shadow:0 24px 64px rgba(0,0,0,.4)">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="margin-bottom:12px"><img src="${document.querySelector('link[rel=apple-touch-icon]')?.href||''}" style="width:52px;height:52px;object-fit:contain" onerror="this.style.display='none'"></div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:22px;color:#0a193c">Definir Nova Senha</div>
+      <div style="font-size:13px;color:#666;margin-top:6px">Digite sua nova senha de acesso</div>
+    </div>
+    <div id="nova-senha-msg" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:13px"></div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:600;color:#444;display:block;margin-bottom:6px">Nova Senha</label>
+      <input id="nova-senha-inp" type="password" placeholder="Mínimo 6 caracteres"
+        style="width:100%;box-sizing:border-box;padding:12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none;font-family:'DM Sans',sans-serif"
+        onfocus="this.style.borderColor='#1a65d6'" onblur="this.style.borderColor='#ddd'"
+        onkeydown="if(event.key==='Enter')confirmarNovaSenha()">
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-size:12px;font-weight:600;color:#444;display:block;margin-bottom:6px">Confirmar Senha</label>
+      <input id="nova-senha-conf" type="password" placeholder="Digite novamente"
+        style="width:100%;box-sizing:border-box;padding:12px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none;font-family:'DM Sans',sans-serif"
+        onfocus="this.style.borderColor='#1a65d6'" onblur="this.style.borderColor='#ddd'"
+        onkeydown="if(event.key==='Enter')confirmarNovaSenha()">
+    </div>
+    <button onclick="confirmarNovaSenha()"
+      style="width:100%;padding:13px;background:#1a65d6;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif">
+      ✅ Salvar Nova Senha
+    </button>
+  </div>`;
+}
+
+async function confirmarNovaSenha(){
+  const senha = document.getElementById('nova-senha-inp')?.value;
+  const conf = document.getElementById('nova-senha-conf')?.value;
+  const msgEl = document.getElementById('nova-senha-msg');
+
+  if(!senha || senha.length < 6){
+    msgEl.style.display='block';
+    msgEl.style.background='#fff0f0';
+    msgEl.style.color='#c00';
+    msgEl.textContent='A senha precisa ter ao menos 6 caracteres.';
+    return;
+  }
+  if(senha !== conf){
+    msgEl.style.display='block';
+    msgEl.style.background='#fff0f0';
+    msgEl.style.color='#c00';
+    msgEl.textContent='As senhas não coincidem.';
+    return;
+  }
+
+  const btn = document.querySelector('#auth-screen button');
+  if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
+
+  try{
+    const {error} = await supa.auth.updateUser({password: senha});
+    if(error) throw error;
+
+    msgEl.style.display='block';
+    msgEl.style.background='#f0fff4';
+    msgEl.style.color='#0a6';
+    msgEl.textContent='✅ Senha atualizada com sucesso! Entrando no sistema...';
+
+    window._aguardandoNovaSenha = false;
+
+    // Fazer logout e login novo com nova senha
+    setTimeout(async ()=>{
+      await supa.auth.signOut();
+      mostrarLogin();
+      authMsg('Senha atualizada! Faça login com sua nova senha.','success');
+    }, 1500);
+
+  }catch(e){
+    if(btn){ btn.disabled=false; btn.textContent='✅ Salvar Nova Senha'; }
+    msgEl.style.display='block';
+    msgEl.style.background='#fff0f0';
+    msgEl.style.color='#c00';
+    msgEl.textContent='Erro: '+e.message;
+  }
+}
+
 async function enviarReset(){
   const email = document.getElementById('reset-email').value.trim();
   if(!email){ authMsg('Digite seu email.','error'); return; }
   try{
-    await supa.auth.resetPasswordForEmail(email);
-    authMsg('Link enviado! Verifique seu email.','success');
+    await supa.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/?nova_senha=1'
+    });
+    authMsg('✅ Link enviado para '+email+'! Verifique seu email e clique no link para definir sua nova senha.','success');
   } catch(e){
     authMsg(e.message,'error');
   }
@@ -7192,14 +7281,18 @@ async function initObraTech(){
       _atualizarPerfilBackground(session.user.id);
     }).catch(e=>console.warn('getSession background:', e.message));
 
-    // Escutar logout
-    supa.auth.onAuthStateChange((event)=>{
+    // Escutar logout e recovery
+    supa.auth.onAuthStateChange((event, session)=>{
       if(event==='SIGNED_OUT'){
         window._sessaoAtiva=false;
         localStorage.removeItem('_ot_empresa_id');
         localStorage.removeItem('_ot_papel');
         localStorage.removeItem('_ot_nome');
         mostrarLogin();
+      }
+      if(event==='PASSWORD_RECOVERY'){
+        window._sessaoAtiva=false;
+        mostrarTelaNovaSenha(session);
       }
     });
     return;
@@ -7211,7 +7304,15 @@ async function initObraTech(){
       if(session) _usuarioAtual=session.user;
       return;
     }
+    if(event==='PASSWORD_RECOVERY'){
+      // Link de reset clicado — mostrar tela de nova senha
+      window._sessaoAtiva=false;
+      mostrarTelaNovaSenha(session);
+      return;
+    }
     if(event==='SIGNED_IN'){
+      // Se veio de um link de recovery, não entrar no app
+      if(window._aguardandoNovaSenha) return;
       if(window._sessaoAtiva) return;
       window._sessaoAtiva=true;
       await iniciarSessao(session);
