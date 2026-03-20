@@ -1523,7 +1523,7 @@ async function iniciarSessao(session){
       _empresaId = cachedEmpresa;
       _papelAtual = cachedPapel;
       DB.user.nome = cachedNome;
-      DB.user.cargo = cachedPapel;
+      DB.user.cargo = localStorage.getItem('_ot_cargo') || cachedPapel;
       
       // Mostrar app IMEDIATAMENTE com dados do cache
       _atualizarSidebar(cachedNome, cachedPapel);
@@ -1570,6 +1570,7 @@ async function iniciarSessao(session){
       localStorage.setItem('_ot_empresa_id', perfil.empresa_id);
       localStorage.setItem('_ot_papel', perfil.papel);
       localStorage.setItem('_ot_nome', perfil.nome);
+      localStorage.setItem('_ot_cargo', perfil.cargo||'');
 
       _atualizarSidebar(perfil.nome, perfil.papel);
 
@@ -2119,7 +2120,7 @@ function abrirModalConvite(){
         <input type="checkbox" class="convite-obra-chk" value="${o.id}" style="width:16px;height:16px">
         ${o.nome}
       </label>`).join('');
-    root.innerHTML=`<div class="ov" onclick="if(event.target===this)document.getElementById('modal-root').innerHTML=''">
+    root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)document.getElementById('modal-root').innerHTML=''">
       <div class="mo">
         <div class="moh"><div class="mot">✉️ Convidar Cliente</div><div class="mox" onclick="closeModal()">✕</div></div>
         <div class="mob">
@@ -2150,7 +2151,7 @@ function abrirModalConvite(){
             <input type="checkbox" class="perm-obra-chk" value="${o.id}" ${liberadas.has(o.id)?'checked':''} style="width:16px;height:16px">
             ${o.nome}
           </label>`).join('');
-        root.innerHTML=`<div class="ov" onclick="if(event.target===this)document.getElementById('modal-root').innerHTML=''">
+        root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)document.getElementById('modal-root').innerHTML=''">
           <div class="mo">
             <div class="moh"><div class="mot">🏗️ Obras de ${cliente.nome}</div><div class="mox" onclick="closeModal()">✕</div></div>
             <div class="mob">
@@ -2209,7 +2210,7 @@ async function enviarConviteCliente(){
       if(authErr.status===422||authErr.message?.includes('confirm')||authErr.message?.includes('422')){
         // Mostrar instrução clara para desativar confirmação
         const root=document.getElementById('modal-root');
-        root.innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()">
+        root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)closeModal()">
           <div class="mo" style="max-width:460px">
             <div class="moh"><div class="mot">⚙️ Configuração Necessária</div><div class="mox" onclick="closeModal()">✕</div></div>
             <div class="mob">
@@ -2282,7 +2283,7 @@ Obras disponíveis: ${obrasSelecionadas}
 
 Após o primeiro acesso, recomendamos trocar a senha em Configurações.`;
 
-    root.innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()">
+    root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)closeModal()">
       <div class="mo" style="max-width:500px">
         <div class="moh">
           <div class="mot">✅ Acesso Criado com Sucesso</div>
@@ -2350,6 +2351,40 @@ async function salvarPermissoesCliente(clienteId){
     toast('❌','Erro ao salvar: '+e.message);
   }
 }
+
+// ── Pull-to-refresh no celular ─────────────────────────────
+(function(){
+  let _ptrStartY=0, _ptrEl=null;
+  const MIN_PULL=70;
+  document.addEventListener('touchstart',e=>{
+    if(window.scrollY>0) return;
+    _ptrStartY=e.touches[0].clientY;
+    if(!_ptrEl){
+      _ptrEl=document.createElement('div');
+      _ptrEl.id='ptr-indicator';
+      _ptrEl.style.cssText='position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-40px);z-index:99999;background:var(--primary);color:#fff;border-radius:0 0 20px 20px;padding:6px 20px;font-size:12px;font-weight:600;transition:transform .2s;pointer-events:none;font-family:DM Sans,sans-serif';
+      _ptrEl.textContent='↓ Puxe para atualizar';
+      document.body.appendChild(_ptrEl);
+    }
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!_ptrStartY) return;
+    const dy=e.touches[0].clientY-_ptrStartY;
+    if(dy<0){_ptrStartY=0;return;}
+    if(dy>10&&_ptrEl){
+      const prog=Math.min(dy/MIN_PULL,1);
+      _ptrEl.style.transform=`translateX(-50%) translateY(${-40+prog*50}px)`;
+      _ptrEl.textContent=dy>=MIN_PULL?'↑ Solte para atualizar':'↓ Puxe para atualizar';
+    }
+  },{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(!_ptrStartY){return;}
+    const dy=e.changedTouches[0].clientY-_ptrStartY;
+    _ptrStartY=0;
+    if(_ptrEl) _ptrEl.style.transform='translateX(-50%) translateY(-40px)';
+    if(dy>=MIN_PULL){ setTimeout(()=>location.reload(),300); }
+  });
+})();
 
 document.addEventListener("DOMContentLoaded", initObraTech);
 
@@ -2446,7 +2481,15 @@ function updateSbObra(){
     el.innerHTML=`<span style="color:var(--primary);font-weight:600">${_obrasFiltro?.length||0} obras</span>`;
     tag.textContent=(_obrasFiltro?.length||0)+' obras';
   }
-  if(DB.user.nome){document.getElementById('user-av').textContent=DB.user.ini||'?';document.getElementById('user-name').textContent=DB.user.nome;document.getElementById('user-role').textContent=DB.user.cargo||'';}
+  if(DB.user.nome){
+    const avEl=document.getElementById('user-av');
+    if(avEl){
+      if(DB.user.foto) avEl.innerHTML=`<img src="${DB.user.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      else avEl.textContent=DB.user.ini||DB.user.nome?.charAt(0)||'?';
+    }
+    document.getElementById('user-name').textContent=DB.user.nome;
+    document.getElementById('user-role').textContent=DB.user.cargo||'';
+  }
 }
 
 function fillSelects(){
@@ -2980,7 +3023,7 @@ function editarEspEtapa(id){
   const e=DB.etapas.find(x=>String(x.id)===String(id));
   if(!e)return;
   const root=document.getElementById('modal-root');
-  root.innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()">
+  root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)closeModal()">
     <div class="mo" style="max-width:380px">
       <div class="moh"><div class="mot">🎯 % Esperado — ${e.nome}</div><div class="mox" onclick="closeModal()">✕</div></div>
       <div class="mob">
@@ -4347,7 +4390,7 @@ function renderDrive(){
 
   const el=document.getElementById('drive-contents');
   const pastasHTML=[...pastasFilhas].map(pf=>`
-    <div class="di folder" ondblclick="drvPath='${pasta?pasta+'/'+pf:'/'+pf}';renderDrive()" oncontextmenu="driveCtxPasta(event,'${pf}')">
+    <div class="di folder" onclick="drvPath='${pasta?pasta+'/'+pf:'/'+pf}';renderDrive()" oncontextmenu="driveCtxPasta(event,'${pf}');event.preventDefault()">
       <div class="di-ic">📂</div><div class="di-name">${pf}</div><div class="di-meta">Pasta</div>
     </div>`).join('');
   const arqsHTML=arqsAtuais.map(a=>`
@@ -4435,7 +4478,7 @@ function driveOpen(id){
   const btnEnviar=`<button class="btn" onclick="driveMoverArquivo('${a.id}','${a.nome.replace(/'/g,"\'")}')">📤 Mover para pasta</button>`;
 
   if(isImg){
-    root.innerHTML=`<div class="ov" onclick="if(event.target===this)document.getElementById('modal-root').innerHTML=''">
+    root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)document.getElementById('modal-root').innerHTML=''">
       <div class="mo" style="max-width:92vw;max-height:92vh;padding:0;background:transparent;box-shadow:none">
         <img src="${a.dados}" style="max-width:88vw;max-height:80vh;border-radius:10px;object-fit:contain;display:block;margin:0 auto">
         <div style="text-align:center;margin-top:10px;display:flex;gap:8px;justify-content:center">
@@ -4471,7 +4514,7 @@ function driveOpen(id){
         </div></div>`;
     }catch(err){
       // Fallback: mostrar botão para baixar
-      root.innerHTML=`<div class="ov" onclick="if(event.target===this)document.getElementById('modal-root').innerHTML=''">
+      root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)document.getElementById('modal-root').innerHTML=''">
         <div class="mo">
           <div class="moh"><div class="mot">📄 ${a.nome}</div><div class="mox" onclick="document.getElementById('modal-root').innerHTML=''">✕</div></div>
           <div class="mob" style="text-align:center">
@@ -4485,7 +4528,7 @@ function driveOpen(id){
     window._mSave=null;return;
   }
 
-  root.innerHTML=`<div class="ov" onclick="if(event.target===this)document.getElementById('modal-root').innerHTML=''">
+  root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)document.getElementById('modal-root').innerHTML=''">
     <div class="mo">
       <div class="moh"><div class="mot">${fIco(a.nome)} ${a.nome}</div><div class="mox" onclick="document.getElementById('modal-root').innerHTML=''">✕</div></div>
       <div class="mob">
@@ -4510,7 +4553,7 @@ function driveMoverArquivo(id,nome){
   const pastas=new Set(['']);
   _driveArqs.forEach(x=>{if(x.pasta&&x.pasta!==a.pasta)pastas.add(x.pasta);});
   const root=document.getElementById('modal-root');
-  root.innerHTML=`<div class="ov" onclick="if(event.target===this)document.getElementById('modal-root').innerHTML=''">
+  root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)document.getElementById('modal-root').innerHTML=''">
     <div class="mo" style="max-width:420px">
       <div class="moh"><div class="mot">📤 Mover "${nome}"</div><div class="mox" onclick="document.getElementById('modal-root').innerHTML=''">✕</div></div>
       <div class="mob">
@@ -4791,7 +4834,7 @@ function openModal(type,editId=null){
             <input type="checkbox" class="perm-obra-chk" value="${o.id}" ${liberadas.has(o.id)?'checked':''} style="width:16px;height:16px">
             ${o.nome}
           </label>`).join('');
-        root.innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()">
+        root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)closeModal()">
           <div class="mo">
             <div class="moh"><div class="mot">🏗️ Obras de ${cliente.nome}</div><div class="mox" onclick="closeModal()">✕</div></div>
             <div class="mob">
@@ -5328,6 +5371,7 @@ function openModal(type,editId=null){
       const foto=window._novaFoto||DB.user.foto||'';
       DB.user={nome,cargo,ini,foto};
       window._novaFoto=null;
+      localStorage.setItem('_ot_cargo', cargo);
       save();
       // Atualizar avatar no sidebar
       const av=document.getElementById('user-av');
@@ -5440,7 +5484,7 @@ function openModal(type,editId=null){
   }
 
   if(!title)return;
-  root.innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()"><div class="mo"><div class="moh"><div class="mot">${title}</div><div class="mox" onclick="closeModal()">✕</div></div><div class="mob">${body}</div><div class="mof"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn pri" onclick="if(window._mSave&&window._mSave())closeModal()">✅ Salvar</button></div></div></div>`;
+  root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)closeModal()"><div class="mo"><div class="moh"><div class="mot">${title}</div><div class="mox" onclick="closeModal()">✕</div></div><div class="mob">${body}</div><div class="mof"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn pri" onclick="if(window._mSave&&window._mSave())closeModal()">✅ Salvar</button></div></div></div>`;
   window._mSave=onSave;
 }
 function _refreshCtEtapas(obraVal){
@@ -5448,6 +5492,11 @@ function _refreshCtEtapas(obraVal){
   sel.innerHTML='<option value="">— Selecionar —</option>'+DB.etapas.filter(e=>!obraVal||e.obraId==parseInt(obraVal)).map(e=>{const opt=document.createElement('option');opt.value=e.nome;opt.textContent=e.nome;return opt.outerHTML;}).join('');
 }
 function closeModal(){document.getElementById('modal-root').innerHTML='';window._mSave=null;}
+
+// Previne fechamento do modal ao arrastar texto para fora
+document.addEventListener('mousedown',e=>{
+  window._modalMousedownInside=!!e.target.closest('.mo,.mio-box');
+});
 // Enter para salvar em qualquer modal aberto
 document.addEventListener('keydown',function(e){
   if(e.key==='Enter'&&!e.shiftKey&&!e.ctrlKey&&!e.altKey){
@@ -8158,7 +8207,7 @@ function pcExportarRDOPdf(){
   if(rdos.length===1){gerarRDOPDF(rdos[0]);return;}
   // Múltiplos RDOs: mostrar seletor
   const root=document.getElementById('modal-root');
-  root.innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()">
+  root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)closeModal()">
     <div class="mo" style="max-width:420px">
       <div class="moh"><div class="mot">📄 Selecionar RDO para PDF</div><div class="mox" onclick="closeModal()">✕</div></div>
       <div class="mob" style="max-height:400px;overflow-y:auto">
