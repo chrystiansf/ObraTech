@@ -7632,8 +7632,8 @@ function pcRenderTab(tab){
       const ganttArea=document.getElementById('gantt-area');
       const kpisArea=document.getElementById('cron-kpis');
       el.innerHTML=`
-        <div class="card" style="margin-bottom:12px">${kpisArea?.innerHTML||''}</div>
-        <div class="card">${ganttArea?.innerHTML||''}</div>`;
+        <div class="kpis" style="margin-bottom:14px">${kpisArea?.innerHTML||''}</div>
+        <div class="card" style="overflow-x:auto">${ganttArea?.innerHTML||''}</div>`;
     } else if(tab==='rdo'){
       renderRDO();
       const rdoForm=document.getElementById('p-rdo');
@@ -7661,11 +7661,22 @@ function pcRenderTab(tab){
           <div class="card">${resumo?.innerHTML||''}</div>
         </div>`;
     } else if(tab==='estoque'){
-      renderEstoque();
-      const cat=document.getElementById('est-panel-catalogo');
-      const sal=document.getElementById('est-panel-saldo');
-      el.innerHTML=`<div class="card" style="overflow-x:auto;margin-bottom:12px">${cat?.innerHTML||''}</div>
-        <div class="card" style="overflow-x:auto">${sal?.innerHTML||''}</div>`;
+      // Forçar renderização do catálogo
+      renderCatalogo();
+      renderEstoqueSaldo();
+      const kpis=document.getElementById('est-kpis-cat');
+      const tbl=document.getElementById('est-tbl');
+      const saldo=document.getElementById('est-saldo-cards');
+      el.innerHTML=`
+        <div class="kpis" style="margin-bottom:14px">${kpis?.innerHTML||''}</div>
+        <div class="card" style="overflow-x:auto;margin-bottom:12px">
+          <div class="ct" style="margin-bottom:10px">📋 Catálogo de Materiais</div>
+          ${tbl?.innerHTML||'<div class="t-empty">Nenhum material.</div>'}
+        </div>
+        <div class="card" style="overflow-x:auto">
+          <div class="ct" style="margin-bottom:10px">🏗️ Estoque por Obra</div>
+          ${saldo?.innerHTML||''}
+        </div>`;
     } else if(tab==='qualidade'){
       renderQual();
       const kpis=document.getElementById('qual-kpis');
@@ -7674,8 +7685,19 @@ function pcRenderTab(tab){
         <div class="card" style="overflow-x:auto">${tbl?.innerHTML||''}</div>`;
     } else if(tab==='contratos'){
       renderContratos();
-      const ct=document.getElementById('ct-lista');
-      el.innerHTML=`<div class="card" style="overflow-x:auto">${ct?.innerHTML||''}</div>`;
+      const kpis=document.getElementById('cont-kpis');
+      const tbl=document.getElementById('cont-tbl');
+      const pgtos=document.getElementById('cont-pgtos-tbl');
+      el.innerHTML=`
+        <div class="kpis" style="margin-bottom:14px">${kpis?.innerHTML||''}</div>
+        <div class="card" style="overflow-x:auto;margin-bottom:12px">
+          <div class="ct" style="margin-bottom:10px">📑 Contratos</div>
+          ${tbl?.innerHTML||'<div class="t-empty">Nenhum contrato.</div>'}
+        </div>
+        <div class="card" style="overflow-x:auto">
+          <div class="ct" style="margin-bottom:10px">💳 Pagamentos</div>
+          ${pgtos?.innerHTML||''}
+        </div>`;
     } else if(tab==='drive'){
       carregarDriveArqs().then(()=>{
         renderDrive();
