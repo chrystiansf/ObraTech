@@ -7143,49 +7143,102 @@ async function initObraTech(){
   initSupabase();
   
   if(!supa){
-    // Modo offline: usa localStorage normalmente
     load();
     mostrarApp();
     renderDash(); fillSelects(); renderObras();
     return;
   }
-  
-  // Escutar mudanças de sessão
+
+  // Verificar cache local IMEDIATAMENTE — sem esperar Supabase
+  const cachedEmpresa = localStorage.getItem('_ot_empresa_id');
+  const cachedPapel = localStorage.getItem('_ot_papel');
+  const cachedNome = localStorage.getItem('_ot_nome');
+
+  if(cachedEmpresa && cachedPapel && cachedNome){
+    // Temos cache: mostrar app INSTANTANEAMENTE
+    _empresaId = cachedEmpresa;
+    _papelAtual = cachedPapel;
+    DB.user.nome = cachedNome;
+    DB.user.cargo = cachedPapel;
+    _atualizarSidebar(cachedNome, cachedPapel);
+    window._sessaoAtiva = true;
+
+    if(cachedPapel==='cliente'){
+      mostrarApp();
+      const unEl=document.getElementById('pc-user-nome');
+      if(unEl) unEl.textContent=cachedNome;
+    } else {
+      mostrarApp();
+      renderDash(); fillSelects(); renderObras();
+    }
+
+    // Validar sessão e carregar dados em background
+    supa.auth.getSession().then(({data:{session}})=>{
+      if(!session){
+        // Sessão expirou — limpar cache e ir para login
+        localStorage.removeItem('_ot_empresa_id');
+        localStorage.removeItem('_ot_papel');
+        localStorage.removeItem('_ot_nome');
+        window._sessaoAtiva = false;
+        mostrarLogin();
+        return;
+      }
+      _usuarioAtual = session.user;
+      toast('👋','Bem-vindo, '+cachedNome.split(' ')[0]+'!');
+      if(cachedPapel==='cliente'){
+        carregarDadosCliente(session.user.id);
+      } else {
+        carregarDadosSupabase().then(()=>{renderDash();fillSelects();renderObras();});
+        iniciarRealtime();
+        adicionarBotaoLogout();
+      }
+      // Atualizar perfil em background
+      _atualizarPerfilBackground(session.user.id);
+    }).catch(e=>console.warn('getSession background:', e.message));
+
+    // Escutar logout
+    supa.auth.onAuthStateChange((event)=>{
+      if(event==='SIGNED_OUT'){
+        window._sessaoAtiva=false;
+        localStorage.removeItem('_ot_empresa_id');
+        localStorage.removeItem('_ot_papel');
+        localStorage.removeItem('_ot_nome');
+        mostrarLogin();
+      }
+    });
+    return;
+  }
+
+  // Sem cache: fluxo normal com onAuthStateChange
   supa.auth.onAuthStateChange(async (event, session) => {
-    if(event === 'TOKEN_REFRESHED'){
-      // Apenas atualiza o token internamente — não reinicializa a sessão
-      if(session) _usuarioAtual = session.user;
+    if(event==='TOKEN_REFRESHED'){
+      if(session) _usuarioAtual=session.user;
       return;
     }
-    if(event === 'SIGNED_IN'){
-      // Evita reinicializar se já estiver logado (troca de aba, foco, etc)
+    if(event==='SIGNED_IN'){
       if(window._sessaoAtiva) return;
-      window._sessaoAtiva = true;
+      window._sessaoAtiva=true;
       await iniciarSessao(session);
       iniciarRealtime();
       adicionarBotaoLogout();
-    } else if(event === 'SIGNED_OUT'){
-      window._sessaoAtiva = false;
+    } else if(event==='SIGNED_OUT'){
+      window._sessaoAtiva=false;
       mostrarLogin();
     }
   });
-  
-  // Verificar sessão existente
-  try {
-    console.log('Verificando sessão...');
-    const { data: { session }, error } = await supa.auth.getSession();
-    console.log('Sessão:', session ? 'ativa' : 'nenhuma', error || '');
+
+  try{
+    const {data:{session},error}=await supa.auth.getSession();
     if(error) throw error;
     if(session){
-      console.log('Iniciando sessão...');
+      window._sessaoAtiva=true;
       await iniciarSessao(session);
       iniciarRealtime();
       adicionarBotaoLogout();
     } else {
-      console.log('Sem sessão — mostrando login');
       mostrarLogin();
     }
-  } catch(e) {
+  }catch(e){
     console.error('Erro ao verificar sessão:', e);
     mostrarLogin();
   }
