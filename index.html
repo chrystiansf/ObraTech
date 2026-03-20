@@ -193,6 +193,7 @@ nav{padding:4px 0;flex:1}
 .inp,.sel,.ta{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);padding:7px 10px;color:var(--txt);font-size:13px;outline:none;transition:.15s;font-family:'DM Sans',sans-serif;width:100%}
 .inp:focus,.sel:focus,.ta:focus{border-color:var(--primary)}.ctx-item{padding:10px 14px;cursor:pointer;font-size:12px;transition:.1s;display:flex;align-items:center;gap:8px}.ctx-item:hover{background:var(--bg3)}
 /* Portal do Cliente */
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
 .pc-tab{padding:10px 16px;font-size:12px;font-weight:600;color:var(--txt3);cursor:pointer;border-bottom:2px solid transparent;transition:.15s;white-space:nowrap}
 .pc-tab.on{color:var(--primary);border-bottom-color:var(--primary)}
 .pc-tab:hover:not(.on){color:var(--txt2)}
@@ -7425,39 +7426,38 @@ let _pcObras = [];
 let _pcDados = {};
 let _pcTabAtiva = 'resumo';
 
+// Cache dos dados do portal para evitar recargas desnecessárias
+const _pcCache = {};
+
 async function carregarDadosCliente(clienteId){
   if(!supa||!_empresaId) return;
+  // Mostrar UI imediatamente
+  const userEl=document.getElementById('pc-user-nome');
+  if(userEl) userEl.textContent = DB.user.nome;
   try{
-    // Buscar obras liberadas para este cliente
-    const {data:permissoes} = await supa.from('cliente_obras')
-      .select('obra_id').eq('cliente_id', clienteId).eq('empresa_id', _empresaId);
+    // Paralelizar: permissões + empresa ao mesmo tempo
+    const [permRes, empRes] = await Promise.all([
+      supa.from('cliente_obras').select('obra_id').eq('cliente_id',clienteId).eq('empresa_id',_empresaId),
+      supa.from('empresas').select('nome').eq('id',_empresaId).maybeSingle()
+    ]);
 
-    if(!permissoes||!permissoes.length){
-      document.getElementById('pc-user-nome').textContent = DB.user.nome;
-      toast('ℹ️','Nenhuma obra liberada para seu acesso. Contate a construtora.');
+    if(empRes.data) document.getElementById('pc-empresa-nome').textContent = empRes.data.nome;
+
+    if(!permRes.data?.length){
+      toast('ℹ️','Nenhuma obra liberada. Contate a construtora.');
       return;
     }
 
-    const obraIds = permissoes.map(p=>p.obra_id);
-
-    // Carregar obras liberadas
-    const {data:obras} = await supa.from('obras').select('*')
-      .in('id', obraIds).eq('empresa_id', _empresaId);
+    const obraIds = permRes.data.map(p=>p.obra_id);
+    const {data:obras} = await supa.from('obras').select('*').in('id',obraIds).eq('empresa_id',_empresaId);
     _pcObras = obras||[];
 
-    // Popular select de obras
     const sel = document.getElementById('pc-obra-sel');
     sel.innerHTML = '<option value="">Selecionar obra...</option>' +
       _pcObras.map(o=>`<option value="${o.id}">${o.nome}</option>`).join('');
 
-    document.getElementById('pc-user-nome').textContent = DB.user.nome;
-
-    // Nome da empresa no topbar
-    const {data:emp} = await supa.from('empresas').select('nome').eq('id',_empresaId).maybeSingle();
-    if(emp) document.getElementById('pc-empresa-nome').textContent = emp.nome;
-
-    // Selecionar primeira obra automaticamente
-    if(_pcObras.length===1){
+    // Auto-selecionar única obra ou primeira
+    if(_pcObras.length>=1){
       sel.value = _pcObras[0].id;
       pcCarregarObra(_pcObras[0].id);
     }
@@ -7465,7 +7465,7 @@ async function carregarDadosCliente(clienteId){
 }
 
 async function pcCarregarObra(obraId){
-  if(!obraId){ 
+  if(!obraId){
     _pcObraId=null;
     document.getElementById('pc-no-obra').style.display='block';
     document.getElementById('pc-main').style.display='none';
@@ -7475,30 +7475,53 @@ async function pcCarregarObra(obraId){
   document.getElementById('pc-no-obra').style.display='none';
   document.getElementById('pc-main').style.display='block';
 
-  // Carregar todos os dados da obra
+  // Mostrar skeleton enquanto carrega
+  document.getElementById('pc-main').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:12px;animation:pulse 1.5s infinite">
+      ${[1,2,3].map(()=>`<div style="height:80px;background:var(--bg3);border-radius:10px;opacity:.6"></div>`).join('')}
+    </div>`;
+
+  // Verificar cache (válido por 60s)
+  const cacheKey = obraId;
+  const cached = _pcCache[cacheKey];
+  if(cached && Date.now()-cached.ts < 60000){
+    _pcDados = cached.dados;
+    pcRenderTab(_pcTabAtiva);
+    return;
+  }
+
   const eid = _empresaId;
-  const [etapas,lancs,rdos,estoque,movs,ncs,contratos,pgtos,colabs,driveArqs] = await Promise.all([
-    supa.from('etapas').select('*').eq('empresa_id',eid).eq('obra_id',obraId),
-    supa.from('lancamentos').select('*').eq('empresa_id',eid).eq('obra_id',obraId),
-    supa.from('rdos').select('*').eq('empresa_id',eid).eq('obra_id',obraId).order('data',{ascending:false}),
-    supa.from('estoque').select('*').eq('empresa_id',eid),
-    supa.from('movimentacoes').select('*').eq('empresa_id',eid).eq('obra_id',obraId),
-    supa.from('nao_conformidades').select('*').eq('empresa_id',eid).eq('obra_id',obraId),
-    supa.from('contratos').select('*').eq('empresa_id',eid).eq('obra_id',obraId),
-    supa.from('pagamentos').select('*').eq('empresa_id',eid).eq('obra_id',obraId),
-    supa.from('colaboradores').select('*').eq('empresa_id',eid),
-    supa.from('drive_arquivos').select('*').eq('empresa_id',eid).eq('obra_id',obraId),
-  ]);
+  try{
+    // Todas as queries em paralelo — tempo total = tempo da mais lenta
+    const [etapas,lancs,rdos,estoque,movs,ncs,contratos,pgtos,colabs,driveArqs] = await Promise.all([
+      supa.from('etapas').select('id,nome,status,pct,inicio,fim,responsavel').eq('empresa_id',eid).eq('obra_id',obraId),
+      supa.from('lancamentos').select('id,tipo,descricao,categoria,valor,data,fornecedor').eq('empresa_id',eid).eq('obra_id',obraId).order('data',{ascending:false}),
+      supa.from('rdos').select('id,data,clima,previsto,realizado,servicos,materiais,obs,status').eq('empresa_id',eid).eq('obra_id',obraId).order('data',{ascending:false}),
+      supa.from('estoque').select('id,material,unidade,estoque_min').eq('empresa_id',eid),
+      supa.from('movimentacoes').select('id,estoque_id,tipo,quantidade').eq('empresa_id',eid).eq('obra_id',obraId),
+      supa.from('nao_conformidades').select('id,numero,descricao,grau,prazo,status,etapa').eq('empresa_id',eid).eq('obra_id',obraId),
+      supa.from('contratos').select('id,numero,descricao,fornecedor,valor,prazo').eq('empresa_id',eid).eq('obra_id',obraId),
+      supa.from('pagamentos').select('id,contrato_id,valor,data').eq('empresa_id',eid).eq('obra_id',obraId),
+      supa.from('colaboradores').select('id,nome,funcao').eq('empresa_id',eid),
+      supa.from('drive_arquivos').select('id,nome,pasta,tipo,tamanho,dados,storage_path').eq('empresa_id',eid).eq('obra_id',obraId),
+    ]);
 
-  _pcDados = {
-    obra: _pcObras.find(o=>o.id===obraId),
-    etapas: etapas.data||[], lancs: lancs.data||[], rdos: rdos.data||[],
-    estoque: estoque.data||[], movs: movs.data||[], ncs: ncs.data||[],
-    contratos: contratos.data||[], pgtos: pgtos.data||[], colabs: colabs.data||[],
-    driveArqs: driveArqs.data||[]
-  };
+    _pcDados = {
+      obra: _pcObras.find(o=>o.id===obraId),
+      etapas: etapas.data||[], lancs: lancs.data||[], rdos: rdos.data||[],
+      estoque: estoque.data||[], movs: movs.data||[], ncs: ncs.data||[],
+      contratos: contratos.data||[], pgtos: pgtos.data||[], colabs: colabs.data||[],
+      driveArqs: driveArqs.data||[]
+    };
 
-  pcRenderTab(_pcTabAtiva);
+    // Salvar no cache
+    _pcCache[cacheKey] = {dados:_pcDados, ts:Date.now()};
+
+    pcRenderTab(_pcTabAtiva);
+  }catch(e){
+    console.error('pcCarregarObra', e.message);
+    document.getElementById('pc-main').innerHTML=`<div class="al e">Erro ao carregar dados: ${e.message}</div>`;
+  }
 }
 
 function pcTab(tab){
