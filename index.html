@@ -7530,8 +7530,6 @@ function pcTab(tab){
   if(_pcObraId) pcRenderTab(tab);
 }
 
-const PC_PDF_TABS={resumo:'Resumo Geral',cronograma:'Cronograma',financeiro:'Financeiro',rdo:'RDOs',estoque:'Estoque',qualidade:'Qualidade',equipe:'Equipe',contratos:'Contratos'};
-
 function pcRenderTab(tab){
   const el = document.getElementById('pc-main');
   const d = _pcDados;
@@ -7562,377 +7560,293 @@ function pcFmtR(v){return'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFract
 function pcFmtDt(d){if(!d)return'—';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`;}
 function pcPct(et){return et.length?Math.round(et.reduce((a,e)=>a+Number(e.pct||0),0)/et.length):0;}
 
-function pcHtmlResumo(d,o){
-  const pct=pcPct(d.etapas);
-  const rec=d.lancs.filter(l=>l.tipo==='Receita').reduce((a,l)=>a+Number(l.valor),0);
-  const dep=d.lancs.filter(l=>l.tipo==='Despesa').reduce((a,l)=>a+Number(l.valor),0);
-  const orc=Number(o.orcamento||0);
-  const rdoHoje=d.rdos[0];
-  const ncsAb=d.ncs.filter(n=>n.status!=='Fechada').length;
-  return`
-  <div class="pc-section-title">📊 Resumo da Obra</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px">
-    <div class="pc-kpi"><div class="pc-kl">🏗️ Obra</div><div class="pc-kv" style="font-size:16px">${o.nome}</div><div class="pc-ks">${o.tipo||'—'}</div></div>
-    <div class="pc-kpi"><div class="pc-kl">📍 Local</div><div class="pc-kv" style="font-size:16px">${o.local||'—'}</div><div class="pc-ks">${o.responsavel||'—'}</div></div>
-    <div class="pc-kpi"><div class="pc-kl">📅 Início</div><div class="pc-kv" style="font-size:16px">${pcFmtDt(o.data_ini)}</div><div class="pc-ks">Prazo: ${pcFmtDt(o.data_fim)}</div></div>
-    <div class="pc-kpi"><div class="pc-kl">⚡ Avanço Físico</div><div class="pc-kv" style="color:var(--primary)">${pct}%</div><div class="pc-ks">${d.etapas.length} etapas</div></div>
-    <div class="pc-kpi"><div class="pc-kl">💰 Orçamento</div><div class="pc-kv">${pcFmtR(orc)}</div><div class="pc-ks">Despesas: ${pcFmtR(dep)}</div></div>
-    <div class="pc-kpi"><div class="pc-kl">✅ NCs Abertas</div><div class="pc-kv" style="color:${ncsAb?'var(--red)':'var(--green)'}">${ncsAb}</div><div class="pc-ks">${d.ncs.length} total</div></div>
-  </div>
-  <div class="pc-section-title">📅 Último RDO ${rdoHoje?'— '+pcFmtDt(rdoHoje.data):''}</div>
-  ${rdoHoje?`<div class="card" style="margin-bottom:16px">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-      <div><div style="font-size:11px;color:var(--txt3)">Clima</div><div style="font-size:13px;font-weight:600">${rdoHoje.clima||'—'}</div></div>
-      <div><div style="font-size:11px;color:var(--txt3)">Efetivo</div><div style="font-size:13px;font-weight:600">${rdoHoje.realizado||0} / ${rdoHoje.previsto||0} trabalhadores</div></div>
-    </div>
-    ${rdoHoje.servicos?`<div style="margin-bottom:8px"><div style="font-size:11px;color:var(--txt3);margin-bottom:4px">Serviços executados</div><div style="font-size:13px;line-height:1.5">${rdoHoje.servicos}</div></div>`:''}
-    ${rdoHoje.obs?`<div><div style="font-size:11px;color:var(--txt3);margin-bottom:4px">Observações</div><div style="font-size:13px;line-height:1.5">${rdoHoje.obs}</div></div>`:''}
-  </div>`:'<div class="t-empty">Nenhum RDO registrado.</div>'}`;
+// ═══════════════════════════════════════════════════════════
+// PORTAL DO CLIENTE — usa as mesmas funções do sistema principal
+// A diferença é apenas: dados injetados no DB + botões removidos após render
+// ═══════════════════════════════════════════════════════════
+
+function pcInjetarDados(d, obraId){
+  // Injeta os dados da obra no DB global temporariamente
+  // para que as funções de render originais funcionem
+  DB.sel = obraId;
+
+  // Mapear dados da API para o formato interno
+  if(d.etapas)   DB.etapas   = d.etapas.map(r=>({id:r.id,obraId:obraId,nome:r.nome,status:r.status,pct:r.pct,resp:r.responsavel,inicio:r.inicio,fim:r.fim,sp:r.sp||0,wp:r.wp||0,_supa:true}));
+  if(d.lancs)    DB.lancs    = d.lancs.map(r=>({id:r.id,obraId:obraId,tipo:r.tipo,desc:r.descricao||r.desc,cat:r.categoria||r.cat,cc:r.centro_custo||r.cc,valor:Number(r.valor||0),data:r.data,forn:r.fornecedor||r.forn,nf:r.nota_fiscal||r.nf,_supa:true}));
+  if(d.rdos)     DB.rdos     = d.rdos.map(r=>({id:r.id,obraId:obraId,data:r.data,clima:r.clima,prev:r.previsto||r.prev,real:r.realizado||r.real,serv:r.servicos||r.serv,obs:r.obs,mat:r.materiais||r.mat,status:r.status,fotos:[],_supa:true}));
+  if(d.estoque)  DB.estoque  = d.estoque.map(r=>({id:r.id,material:r.material,un:r.unidade,qtd:0,min:Number(r.estoque_min||0),preco:Number(r.preco||0),forn:r.fornecedor,_supa:true}));
+  if(d.movs)     DB.movs     = d.movs.map(r=>({id:r.id,estId:r.estoque_id,obraId:obraId,tipo:r.tipo,qtd:Number(r.quantidade||0),data:r.data,_supa:true}));
+  if(d.ncs)      DB.ncs      = d.ncs.map(r=>({id:r.id,numero:r.numero,obraId:obraId,etapa:r.etapa,desc:r.descricao||r.desc,grau:r.grau,prazo:r.prazo,resp:r.responsavel,status:r.status,acao:r.acao,_supa:true}));
+  if(d.contratos)DB.contratos= d.contratos.map(r=>({id:r.id,obraId:obraId,numero:r.numero,descricao:r.descricao,forn:r.fornecedor,tipo:r.tipo,cat:r.categoria,cc:r.centro_custo,valor:Number(r.valor||0),assinatura:r.assinatura,prazo:r.prazo,obs:r.obs,_supa:true}));
+  if(d.pgtos)    DB.pgtos    = d.pgtos.map(r=>({id:r.id,contratoId:r.contrato_id,obraId:obraId,data:r.data,valor:Number(r.valor||0),desc:r.descricao,nf:r.nota_fiscal,forn:r.fornecedor,tipo:r.tipo,cat:r.categoria,cc:r.centro_custo,_supa:true}));
+  if(d.colabs)   DB.colabs   = d.colabs.map(r=>({id:r.id,nome:r.nome,funcao:r.funcao,cpf:r.cpf,admissao:r.admissao,diaria:Number(r.diaria||0),_supa:true}));
+  if(d.driveArqs)_driveArqs  = d.driveArqs;
+  _drvObraId = obraId;
+
+  // Garantir obras no DB
+  if(d.obra && !DB.obras.find(o=>o.id===d.obra.id)){
+    DB.obras = [d.obra];
+  }
 }
 
-function pcHtmlCronograma(d,o){
-  if(!d.etapas.length) return '<div class="t-empty">Nenhuma etapa cadastrada.</div>';
-  const hoje=new Date();
-  return`<div class="pc-section-title">📅 Cronograma Físico</div>
-  <div class="card">
-  ${d.etapas.map(e=>{
-    const pct=Number(e.pct||0);
-    const cor=pct>=100?'var(--green)':e.status==='late'?'var(--red)':e.status==='done'?'var(--green)':'var(--primary)';
-    const stLabel={plan:'Planejado',prog:'Em andamento',done:'Concluído',late:'Atrasado'}[e.status]||e.status||'—';
-    return`<div style="margin-bottom:14px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-        <div style="font-weight:600;font-size:13px">${e.nome}</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <span style="font-size:11px;color:var(--txt3)">${pcFmtDt(e.inicio)} → ${pcFmtDt(e.fim)}</span>
-          <span class="b ${pct>=100?'bg':e.status==='late'?'br':e.status==='prog'?'bb':'bn'}" style="font-size:10px">${stLabel}</span>
+function pcRenderTab(tab){
+  const el = document.getElementById('pc-main');
+  const d = _pcDados;
+  const o = d.obra;
+  if(!o){ el.innerHTML=''; return; }
+
+  // Injetar dados no DB global
+  pcInjetarDados(d, o.id);
+
+  // Criar container temporário
+  const tmp = document.createElement('div');
+  tmp.style.cssText='position:absolute;left:-9999px;top:0;width:1200px';
+  document.body.appendChild(tmp);
+
+  // Redirecionar renders para container temporário
+  const origContent = document.getElementById('content');
+  const fakeContent = document.createElement('div');
+  fakeContent.id = 'content';
+  fakeContent.style.cssText='padding:15px';
+
+  // Criar páginas temporárias que as funções de render precisam
+  const pageIds=['p-cronograma','p-rdo','p-financeiro','p-estoque','p-qualidade','p-contratos','p-drive','p-equipe','p-dashboard'];
+  const origPages={};
+  pageIds.forEach(id=>{
+    const orig=document.getElementById(id);
+    if(orig){
+      origPages[id]=orig;
+      const fake=document.createElement('div');
+      fake.id=id;
+      fake.className='page on';
+      tmp.appendChild(fake);
+    }
+  });
+
+  // Renderizar conforme aba
+  try{
+    if(tab==='resumo'){
+      pcRenderResumo(el, d, o);
+    } else if(tab==='cronograma'){
+      renderCron();
+      const ganttArea=document.getElementById('gantt-area');
+      const kpisArea=document.getElementById('cron-kpis');
+      el.innerHTML=`
+        <div class="card" style="margin-bottom:12px">${kpisArea?.innerHTML||''}</div>
+        <div class="card">${ganttArea?.innerHTML||''}</div>`;
+    } else if(tab==='rdo'){
+      renderRDO();
+      const rdoForm=document.getElementById('p-rdo');
+      // Mostrar apenas histórico
+      el.innerHTML=`<div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="ct">📋 RDOs da Obra</div>
+          <button class="btn sm pri" onclick="pcExportarRDOPdf()">📄 Exportar PDF</button>
         </div>
-      </div>
-      <div style="background:var(--bg3);border-radius:4px;height:10px;overflow:hidden">
-        <div style="height:100%;width:${pct}%;background:${cor};border-radius:4px;transition:.6s"></div>
-      </div>
-      <div style="text-align:right;font-size:11px;color:${cor};margin-top:2px;font-weight:600">${pct}%</div>
-    </div>`;
-  }).join('')}
-  </div>`;
+        <div id="pc-rdo-hist-wrap"></div>
+      </div>`;
+      renderRDOHist();
+      const hist=document.getElementById('rdo-hist');
+      const wrap=document.getElementById('pc-rdo-hist-wrap');
+      if(hist&&wrap) wrap.innerHTML=hist.innerHTML;
+    } else if(tab==='financeiro'){
+      renderFin();
+      const kpis=document.getElementById('fin-kpis');
+      const tbl=document.getElementById('lanc-tbl');
+      const resumo=document.getElementById('fin-resumo');
+      el.innerHTML=`
+        <div class="kpis" style="margin-bottom:14px">${kpis?.innerHTML||''}</div>
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+          <div class="card" style="overflow-x:auto">${tbl?.innerHTML||''}</div>
+          <div class="card">${resumo?.innerHTML||''}</div>
+        </div>`;
+    } else if(tab==='estoque'){
+      renderEstoque();
+      const cat=document.getElementById('est-panel-catalogo');
+      const sal=document.getElementById('est-panel-saldo');
+      el.innerHTML=`<div class="card" style="overflow-x:auto;margin-bottom:12px">${cat?.innerHTML||''}</div>
+        <div class="card" style="overflow-x:auto">${sal?.innerHTML||''}</div>`;
+    } else if(tab==='qualidade'){
+      renderQual();
+      const kpis=document.getElementById('qual-kpis');
+      const tbl=document.getElementById('nc-tbl');
+      el.innerHTML=`<div class="kpis" style="margin-bottom:14px">${kpis?.innerHTML||''}</div>
+        <div class="card" style="overflow-x:auto">${tbl?.innerHTML||''}</div>`;
+    } else if(tab==='contratos'){
+      renderContratos();
+      const ct=document.getElementById('ct-lista');
+      el.innerHTML=`<div class="card" style="overflow-x:auto">${ct?.innerHTML||''}</div>`;
+    } else if(tab==='drive'){
+      carregarDriveArqs().then(()=>{
+        renderDrive();
+        const dr=document.getElementById('drive-contents');
+        el.innerHTML=`<div class="card">${dr?.innerHTML||''}</div>`;
+        pcBloquearEdicao(el);
+      });
+      return;
+    } else if(tab==='equipe'){
+      pcRenderEquipe(el, d);
+      return;
+    }
+  }catch(err){
+    console.error('pcRenderTab erro:', err);
+    el.innerHTML=`<div class="al e">Erro ao renderizar: ${err.message}</div>`;
+  }
+
+  // Restaurar páginas originais
+  pageIds.forEach(id=>{
+    if(origPages[id]){
+      const fake=document.getElementById(id);
+      if(fake&&fake!==origPages[id]) fake.remove();
+    }
+  });
+  document.body.removeChild(tmp);
+
+  // Adicionar botão PDF e bloquear edição
+  const btnPdf = PC_PDF_TABS[tab]
+    ? `<div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+        <button class="btn sm pri" onclick="pcGerarPdf('${tab}')">📄 Exportar PDF</button>
+       </div>`
+    : '';
+  el.innerHTML = btnPdf + el.innerHTML;
+  pcBloquearEdicao(el);
 }
 
-function pcHtmlFinanceiro(d,o){
-  const rec=d.lancs.filter(l=>l.tipo==='Receita').reduce((a,l)=>a+Number(l.valor),0);
-  const dep=d.lancs.filter(l=>l.tipo==='Despesa').reduce((a,l)=>a+Number(l.valor),0);
-  const orc=Number(o.orcamento||0);
-  return`<div class="pc-section-title">💰 Financeiro</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px">
-    <div class="pc-kpi"><div class="pc-kl">💰 Receitas</div><div class="pc-kv" style="color:var(--green)">${pcFmtR(rec)}</div></div>
-    <div class="pc-kpi"><div class="pc-kl">💸 Despesas</div><div class="pc-kv" style="color:var(--red)">${pcFmtR(dep)}</div></div>
-    <div class="pc-kpi"><div class="pc-kl">⚖️ Saldo</div><div class="pc-kv" style="color:${rec>=dep?'var(--green)':'var(--red)'}">${pcFmtR(rec-dep)}</div></div>
-    ${orc?`<div class="pc-kpi"><div class="pc-kl">📊 Orçamento</div><div class="pc-kv">${pcFmtR(orc)}</div><div class="pc-ks">${orc?Math.round(dep/orc*100):0}% consumido</div></div>`:''}
-  </div>
-  <div class="pc-section-title">Lançamentos</div>
-  <div class="card" style="overflow-x:auto">
-  <table class="tbl"><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Tipo</th><th style="text-align:right">Valor</th></tr>
-  ${d.lancs.sort((a,b)=>b.data?.localeCompare(a.data||'')).map(l=>`
-    <tr><td>${pcFmtDt(l.data)}</td><td class="n">${l.descricao||'—'}</td><td>${l.categoria||'—'}</td>
-    <td><span class="b ${l.tipo==='Receita'?'bg':'br'}">${l.tipo}</span></td>
-    <td style="text-align:right;font-weight:600;color:${l.tipo==='Receita'?'var(--green)':'var(--red)'}">${l.tipo==='Despesa'?'−':'+'}${pcFmtR(l.valor)}</td></tr>`).join('')}
-  </table></div>`;
-}
-
-function pcHtmlRdo(d,o){
-  if(!d.rdos.length) return '<div class="t-empty">Nenhum RDO registrado.</div>';
-  const rdosFinalizados=d.rdos.filter(r=>r.status==='finalizado');
-  const rdosTodos=d.rdos;
-  return`
-  <!-- Filtro e ações -->
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-    <div class="pc-section-title" style="margin:0;border:none;flex:1">📋 Relatórios Diários de Obra</div>
-    <select class="sel" id="pc-rdo-filtro" style="height:30px;font-size:12px;width:160px" onchange="pcFiltrarRdo()">
-      <option value="todos">Todos (${rdosTodos.length})</option>
-      <option value="finalizados">Finalizados (${rdosFinalizados.length})</option>
-      <option value="mes">Este mês</option>
-    </select>
-    <button class="btn sm pri" onclick="pcGerarPdf('rdo')">📄 PDF Completo</button>
-  </div>
-
-  <!-- Lista de RDOs -->
-  <div id="pc-rdo-lista">
-  ${rdosTodos.map((r,idx)=>{
-    const mesAtual=new Date().toISOString().substring(0,7);
-    const rdoMes=r.data?.substring(0,7);
-    return`<div class="card pc-rdo-item" data-status="${r.status}" data-mes="${rdoMes}" style="margin-bottom:10px;cursor:pointer" onclick="pcAbrirRdo(${idx})">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="font-size:20px">${r.status==='finalizado'?'📋':'📝'}</div>
-          <div>
-            <div style="font-weight:700;font-size:14px">${pcFmtDt(r.data)}</div>
-            <div style="font-size:11px;color:var(--txt3);margin-top:2px">
-              ${r.clima||'—'} · Efetivo: ${r.realizado||0}/${r.previsto||0}
-            </div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="b ${r.status==='finalizado'?'bg':'by'}">${r.status==='finalizado'?'✓ Finalizado':'Rascunho'}</span>
-          <button class="btn sm" onclick="event.stopPropagation();pcBaixarRdoPdf(${idx})" title="Baixar PDF">📄</button>
-          <span style="font-size:14px;color:var(--txt3)">›</span>
-        </div>
-      </div>
-    </div>`;
-  }).join('')}
-  </div>
-
-  <!-- Modal RDO detalhe -->
-  <div id="pc-rdo-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:800;display:none;align-items:center;justify-content:center">
-    <div style="background:var(--card);border-radius:13px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)">
-      <div id="pc-rdo-modal-content"></div>
-    </div>
-  </div>`;
-}
-
-function pcFiltrarRdo(){
-  const f=document.getElementById('pc-rdo-filtro')?.value||'todos';
-  const mesAtual=new Date().toISOString().substring(0,7);
-  document.querySelectorAll('.pc-rdo-item').forEach(el=>{
-    const status=el.dataset.status;
-    const mes=el.dataset.mes;
-    let show=true;
-    if(f==='finalizados') show=status==='finalizado';
-    else if(f==='mes') show=mes===mesAtual;
-    el.style.display=show?'block':'none';
+function pcBloquearEdicao(container){
+  // Remove todos os botões de edição/criação
+  container.querySelectorAll('.btn-new,.btn[onclick*="openModal"],.btn[onclick*="openMocModal"]').forEach(b=>b.remove());
+  // Remover botões com ícones de edição
+  container.querySelectorAll('button').forEach(b=>{
+    const txt=b.textContent.trim();
+    const onclick=b.getAttribute('onclick')||'';
+    if(txt==='✏️'||txt==='🗑️'||txt==='＋ Novo'||txt==='＋'||
+       onclick.includes('openModal')||onclick.includes('delete')||
+       onclick.includes('del')||onclick.includes('salvar')||
+       onclick.includes('editar')||onclick.includes('supaInsert')||
+       onclick.includes('supaUpdate')||onclick.includes('supaDelete')){
+      b.remove();
+    }
+  });
+  // Desabilitar inputs e selects (exceto filtros do portal)
+  container.querySelectorAll('input:not([type=text][readonly]),select').forEach(el=>{
+    if(!el.closest('#pc-topbar')&&!el.id?.startsWith('pc-')){
+      el.disabled=true;
+      el.style.pointerEvents='none';
+    }
   });
 }
 
-function pcAbrirRdo(idx){
-  const r=_pcDados.rdos[idx];
-  if(!r) return;
+function pcRenderResumo(el, d, o){
+  const pct=d.etapas.length?Math.round(d.etapas.reduce((a,e)=>a+Number(e.pct||0),0)/d.etapas.length):0;
+  const rec=d.lancs.filter(l=>l.tipo==='Receita').reduce((a,l)=>a+Number(l.valor),0);
+  const dep=d.lancs.filter(l=>l.tipo==='Despesa').reduce((a,l)=>a+Number(l.valor),0);
+  const orc=Number(o.orcamento||0);
+  const ncsAb=d.ncs.filter(n=>n.status!=='Fechada').length;
+  const rdoHoje=d.rdos[0];
+  el.innerHTML=`
+  <div class="kpis" style="margin-bottom:16px">
+    <div class="kpi"><div class="kl">⚡ Avanço Físico</div><div class="kv" style="color:var(--primary)">${pct}%</div><div class="kd neu">${d.etapas.length} etapas</div></div>
+    <div class="kpi"><div class="kl">💰 Orçamento</div><div class="kv">${fmtR(orc)}</div><div class="kd ${dep>orc?'dn':'neu'}">${orc?Math.round(dep/orc*100):0}% usado</div></div>
+    <div class="kpi"><div class="kl">💸 Despesas</div><div class="kv" style="color:var(--red)">${fmtR(dep)}</div><div class="kd dn">${d.lancs.filter(l=>l.tipo==='Despesa').length} lançamentos</div></div>
+    <div class="kpi"><div class="kl">💰 Receitas</div><div class="kv" style="color:var(--green)">${fmtR(rec)}</div><div class="kd up">${d.lancs.filter(l=>l.tipo==='Receita').length} lançamentos</div></div>
+    <div class="kpi"><div class="kl">✅ NCs Abertas</div><div class="kv" style="color:${ncsAb?'var(--red)':'var(--green)'}">${ncsAb}</div><div class="kd ${ncsAb?'dn':'up'}">${d.ncs.length} total</div></div>
+    <div class="kpi"><div class="kl">📁 Documentos</div><div class="kv">${d.driveArqs.filter(a=>!a.nome?.startsWith('.')).length}</div><div class="kd neu">arquivos</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+    <div class="card">
+      <div class="ct" style="margin-bottom:10px">📊 Informações da Obra</div>
+      ${[['Nome',o.nome],['Tipo',o.tipo||'—'],['Local',o.local||o.local||'—'],['Responsável',o.responsavel||'—'],['Cliente',o.cliente||'—'],['Início',fmtDt(o.data_ini||o.dataIni)],['Prazo',fmtDt(o.data_fim||o.dataFim)]].map(([k,v])=>`
+        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <span style="color:var(--txt3)">${k}</span><span style="font-weight:500">${v||'—'}</span>
+        </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="ct" style="margin-bottom:10px">📅 Cronograma Rápido</div>
+      ${d.etapas.slice(0,6).map(e=>{
+        const pct=Number(e.pct||0);
+        const cor=pct>=100?'var(--green)':e.status==='late'?'var(--red)':'var(--primary)';
+        return`<div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+            <span>${e.nome}</span><span style="color:${cor};font-weight:600">${pct}%</span>
+          </div>
+          <div style="background:var(--bg3);border-radius:3px;height:5px">
+            <div style="width:${pct}%;height:100%;background:${cor};border-radius:3px"></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+  ${rdoHoje?`<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="ct">📋 Último RDO — ${fmtDt(rdoHoje.data)}</div>
+      <span class="b ${rdoHoje.status==='finalizado'?'bg':'by'}">${rdoHoje.status==='finalizado'?'✓ Finalizado':'Rascunho'}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
+      <div class="kpi"><div class="kl">☁️ Clima</div><div class="kv" style="font-size:16px">${rdoHoje.clima||'—'}</div></div>
+      <div class="kpi"><div class="kl">👷 Previsto</div><div class="kv" style="font-size:16px">${rdoHoje.prev||rdoHoje.previsto||0}</div></div>
+      <div class="kpi"><div class="kl">✅ Realizado</div><div class="kv" style="font-size:16px;color:var(--green)">${rdoHoje.real||rdoHoje.realizado||0}</div></div>
+    </div>
+    ${rdoHoje.serv||rdoHoje.servicos?`<div style="font-size:12px;color:var(--txt2)">${rdoHoje.serv||rdoHoje.servicos}</div>`:''}
+  </div>`:''}`;
+}
+
+function pcRenderEquipe(el, d){
+  el.innerHTML=`<div class="card" style="overflow-x:auto">
+    <div class="ct" style="margin-bottom:12px">👷 Equipe da Obra</div>
+    <table class="tbl"><tr><th>Colaborador</th><th>Função</th></tr>
+    ${d.colabs.map(c=>`<tr><td class="n">${c.nome}</td><td>${c.funcao||'—'}</td></tr>`).join('')}
+    </table></div>`;
+}
+
+function pcExportarRDOPdf(){
+  // Usar a função original de PDF do sistema
+  const rdos=DB.rdos.filter(r=>r.obraId===_pcObraId&&r.status==='finalizado');
+  if(!rdos.length){toast('⚠️','Nenhum RDO finalizado.');return;}
+  // Gerar PDF para o primeiro RDO finalizado ou abrir seletor
+  if(rdos.length===1){gerarRDOPDF(rdos[0]);return;}
+  // Múltiplos RDOs: mostrar seletor
   const root=document.getElementById('modal-root');
   root.innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()">
-    <div class="mo" style="max-width:560px">
-      <div class="moh">
-        <div class="mot">📋 RDO — ${pcFmtDt(r.data)}</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn sm pri" onclick="pcBaixarRdoPdf(${idx})">📄 PDF</button>
-          <div class="mox" onclick="closeModal()">✕</div>
-        </div>
+    <div class="mo" style="max-width:420px">
+      <div class="moh"><div class="mot">📄 Selecionar RDO para PDF</div><div class="mox" onclick="closeModal()">✕</div></div>
+      <div class="mob" style="max-height:400px;overflow-y:auto">
+        ${rdos.map((r,i)=>`<div class="card" style="margin-bottom:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center" onclick="closeModal();gerarRDOPDF(DB.rdos.find(x=>x.id==='${r.id}'))">
+          <div>
+            <div style="font-weight:600">${fmtDt(r.data)}</div>
+            <div style="font-size:11px;color:var(--txt3)">${r.clima||'—'} · ${r.real||0} trabalhadores</div>
+          </div>
+          <span class="b bg">📄 PDF</span>
+        </div>`).join('')}
       </div>
-      <div class="mob">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
-          <div class="pc-kpi"><div class="pc-kl">☁️ Clima</div><div class="pc-kv" style="font-size:16px">${r.clima||'—'}</div></div>
-          <div class="pc-kpi"><div class="pc-kl">👷 Previsto</div><div class="pc-kv" style="font-size:16px">${r.previsto||0}</div></div>
-          <div class="pc-kpi"><div class="pc-kl">✅ Realizado</div><div class="pc-kv" style="font-size:16px;color:var(--green)">${r.realizado||0}</div></div>
-        </div>
-        ${r.servicos?`<div class="card" style="margin-bottom:10px">
-          <div style="font-size:11px;color:var(--txt3);margin-bottom:6px;font-weight:600">🔧 SERVIÇOS EXECUTADOS</div>
-          <div style="font-size:13px;line-height:1.7">${r.servicos}</div>
-        </div>`:''}
-        ${r.materiais?`<div class="card" style="margin-bottom:10px">
-          <div style="font-size:11px;color:var(--txt3);margin-bottom:6px;font-weight:600">📦 MATERIAIS UTILIZADOS</div>
-          <div style="font-size:13px;line-height:1.7">${r.materiais}</div>
-        </div>`:''}
-        ${r.obs?`<div class="card" style="margin-bottom:10px">
-          <div style="font-size:11px;color:var(--txt3);margin-bottom:6px;font-weight:600">📝 OBSERVAÇÕES</div>
-          <div style="font-size:13px;line-height:1.7">${r.obs}</div>
-        </div>`:''}
-        <div style="text-align:right">
-          <span class="b ${r.status==='finalizado'?'bg':'by'}">${r.status==='finalizado'?'✓ Finalizado':'📝 Rascunho'}</span>
-        </div>
-      </div>
-      <div class="mof">
-        <button class="btn" onclick="closeModal()">Fechar</button>
-        <button class="btn pri" onclick="pcBaixarRdoPdf(${idx})">📄 Baixar PDF</button>
-      </div>
+      <div class="mof"><button class="btn" onclick="closeModal()">Fechar</button></div>
     </div></div>`;
 }
 
-function pcBaixarRdoPdf(idx){
-  const r=_pcDados.rdos[idx];
-  const o=_pcDados.obra;
-  if(!r||!o) return;
+const PC_PDF_TABS={resumo:'Resumo Geral',cronograma:'Cronograma',financeiro:'Financeiro',estoque:'Estoque',qualidade:'Qualidade',equipe:'Equipe',contratos:'Contratos'};
+
+function pcGerarPdf(tab){
+  // Usar funções de PDF originais do sistema quando disponível
+  if(tab==='cronograma'){exportGanttPDF();return;}
+  if(tab==='rdo'){pcExportarRDOPdf();return;}
+
+  // Para outras abas usar jsPDF com dados do portal
   if(!window.jspdf?.jsPDF){toast('⚠️','PDF não disponível.');return;}
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
+  const d=_pcDados; const o=d.obra; if(!o) return;
   const W=doc.internal.pageSize.getWidth();
   const MAR=14;
-  const PRI=[91,143,249];
+  const PRI=[91,143,249],GRY=[100,110,140],DARK=[30,36,58],LIGHT=[240,243,255];
   let y=MAR;
 
+  // Cabeçalho padrão
   doc.setFillColor(...PRI);doc.rect(0,0,W,28,'F');
   doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(14);
-  doc.text('Relatório Diário de Obra',MAR,11);
+  doc.text('ObraTech — '+( PC_PDF_TABS[tab]||tab),MAR,11);
   doc.setFontSize(9);doc.setFont('helvetica','normal');
-  doc.text(o.nome,MAR,18);doc.text('Data: '+pcFmtDt(r.data),MAR,24);
-  doc.text('Emitido em: '+new Date().toLocaleDateString('pt-BR'),W-MAR,24,{align:'right'});
-  y=36;
-
-  doc.setTextColor(30,36,58);
-  const info=[['Clima',r.clima||'—'],['Efetivo Previsto',String(r.previsto||0)],['Efetivo Realizado',String(r.realizado||0)],['Status',r.status==='finalizado'?'Finalizado':'Rascunho']];
-  info.forEach(([k,v])=>{
-    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(100,110,140);doc.text(k+':',MAR,y);
-    doc.setFont('helvetica','normal');doc.setTextColor(30,36,58);doc.text(v,MAR+45,y);y+=7;
-  });
-  y+=4;
-  if(r.servicos){doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...PRI);doc.text('Serviços Executados',MAR,y);y+=7;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(30,36,58);const sl=doc.splitTextToSize(r.servicos,W-MAR*2);doc.text(sl,MAR,y);y+=sl.length*6+6;}
-  if(r.materiais){doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...PRI);doc.text('Materiais Utilizados',MAR,y);y+=7;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(30,36,58);const ml=doc.splitTextToSize(r.materiais,W-MAR*2);doc.text(ml,MAR,y);y+=ml.length*6+6;}
-  if(r.obs){doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...PRI);doc.text('Observações',MAR,y);y+=7;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(30,36,58);const ol=doc.splitTextToSize(r.obs,W-MAR*2);doc.text(ol,MAR,y);}
-
-  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(100,110,140);
-  doc.text('ObraTech — Portal do Cliente | '+o.nome,MAR,290);
-  doc.text(new Date().toLocaleDateString('pt-BR'),W-MAR,290,{align:'right'});
-
-  doc.save('RDO_'+o.nome.replace(/[^a-zA-Z0-9]/g,'_')+'_'+r.data+'.pdf');
-  toast('📄','PDF do RDO gerado!');
-}
-
-function pcHtmlEstoque(d,o){
-  const saldos={};
-  d.movs.forEach(m=>{saldos[m.estoque_id]=(saldos[m.estoque_id]||0)+(m.tipo==='entrada'?m.quantidade:-m.quantidade);});
-  return`<div class="pc-section-title">📦 Estoque</div>
-  <div class="card" style="overflow-x:auto">
-  <table class="tbl"><tr><th>Material</th><th>Un.</th><th>Saldo</th><th>Mínimo</th><th>Status</th></tr>
-  ${d.estoque.map(e=>{
-    const qtd=saldos[e.id]||0;
-    const ok=qtd>=Number(e.estoque_min||0);
-    return`<tr><td class="n">${e.material}</td><td>${e.unidade||'—'}</td>
-    <td style="font-weight:600;color:${ok?'var(--green)':'var(--red)'}">${qtd}</td>
-    <td>${e.estoque_min||0}</td>
-    <td><span class="b ${ok?'bg':'br'}">${ok?'✓ OK':'⚠ Baixo'}</span></td></tr>`;
-  }).join('')}
-  </table></div>`;
-}
-
-function pcHtmlQualidade(d,o){
-  const ab=d.ncs.filter(n=>n.status!=='Fechada').length;
-  return`<div class="pc-section-title">✅ Qualidade — Não Conformidades</div>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
-    <div class="pc-kpi"><div class="pc-kl">📋 Total</div><div class="pc-kv">${d.ncs.length}</div></div>
-    <div class="pc-kpi"><div class="pc-kl">🔴 Abertas</div><div class="pc-kv" style="color:${ab?'var(--red)':'var(--green)'}">${ab}</div></div>
-    <div class="pc-kpi"><div class="pc-kl">✅ Fechadas</div><div class="pc-kv" style="color:var(--green)">${d.ncs.length-ab}</div></div>
-  </div>
-  <div class="card" style="overflow-x:auto">
-  <table class="tbl"><tr><th>Nº</th><th>Descrição</th><th>Grau</th><th>Prazo</th><th>Status</th></tr>
-  ${d.ncs.map(n=>`<tr>
-    <td style="font-weight:600;color:var(--primary)">#${n.numero||n.id.substring(0,6)}</td>
-    <td class="n">${n.descricao||'—'}</td>
-    <td><span class="b ${n.grau==='Alta'?'br':n.grau==='Média'?'by':'bn'}">${n.grau||'Baixa'}</span></td>
-    <td>${pcFmtDt(n.prazo)}</td>
-    <td><span class="b ${n.status==='Fechada'?'bg':'by'}">${n.status}</span></td>
-  </tr>`).join('')}
-  </table></div>`;
-}
-
-function pcHtmlDrive(d,o){
-  const arqs=d.driveArqs.filter(a=>!a.nome.startsWith('.'));
-  if(!arqs.length) return '<div class="t-empty">Nenhum documento disponível.</div>';
-  return`<div class="pc-section-title">📁 Documentos da Obra</div>
-  <div class="card">
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
-  ${arqs.map(a=>`<div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:.15s;border:1px solid var(--border)" onclick="pcAbrirArquivo('${a.id}')" onmouseover="this.style.background='var(--card2)'" onmouseout="this.style.background='var(--bg3)'">
-    <div style="font-size:32px;margin-bottom:6px">${fIco(a.nome)}</div>
-    <div style="font-size:11px;font-weight:600;color:var(--txt);word-break:break-all">${a.nome}</div>
-    <div style="font-size:10px;color:var(--txt3);margin-top:3px">${fmtFS(a.tamanho||0)}</div>
-    <button onclick="event.stopPropagation();pcBaixarArquivo('${a.id}')" style="margin-top:8px;background:var(--primary);color:white;border:none;border-radius:6px;padding:4px 10px;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif">⬇️ Baixar</button>
-  </div>`).join('')}
-  </div></div>`;
-}
-
-function pcAbrirArquivo(id){
-  const a=_pcDados.driveArqs.find(x=>x.id===id);
-  if(!a||!a.dados) return;
-  const ext=a.nome.split('.').pop()?.toLowerCase();
-  const isPdf=ext==='pdf'||a.tipo==='application/pdf';
-  const isImg=a.tipo?.startsWith('image/')||['jpg','jpeg','png','gif','webp'].includes(ext);
-  const root=document.getElementById('modal-root');
-  if(isImg){
-    root.innerHTML=`<div class="ov" onclick="if(event.target===this)document.getElementById('modal-root').innerHTML=''">
-      <div class="mo" style="max-width:92vw;padding:0;background:transparent;box-shadow:none">
-        <img src="${a.dados}" style="max-width:88vw;max-height:85vh;border-radius:10px;object-fit:contain;display:block;margin:0 auto">
-        <div style="text-align:center;margin-top:10px;display:flex;gap:8px;justify-content:center">
-          <button class="btn pri" onclick="pcBaixarArquivo('${a.id}')">⬇️ Baixar</button>
-          <button class="btn" onclick="document.getElementById('modal-root').innerHTML=''">✕ Fechar</button>
-        </div>
-      </div></div>`;
-    return;
-  }
-  if(isPdf&&a.dados){
-    try{
-      const b64=a.dados.split(',')[1]||a.dados;
-      const bin=atob(b64);const arr=new Uint8Array(bin.length);
-      for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
-      const blob=new Blob([arr],{type:'application/pdf'});
-      window._pdfBlobUrl=URL.createObjectURL(blob);
-      window.fechaDrivePdf=function(){try{if(window._pdfBlobUrl){URL.revokeObjectURL(window._pdfBlobUrl);window._pdfBlobUrl=null;}}catch(e){}document.getElementById('modal-root').innerHTML='';};
-      root.innerHTML=`<div class="ov" onclick="if(event.target===this)window.fechaDrivePdf()">
-        <div class="mo" style="max-width:95vw;width:95vw;max-height:95vh;height:95vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
-          <div class="moh" style="padding:12px 16px;flex-shrink:0"><div class="mot">📄 ${a.nome}</div><div class="mox" onclick="window.fechaDrivePdf()">✕</div></div>
-          <iframe src="${window._pdfBlobUrl}" style="flex:1;border:none;width:100%;height:100%"></iframe>
-          <div class="mof" style="flex-shrink:0"><button class="btn" onclick="window.fechaDrivePdf()">✕ Fechar</button><button class="btn pri" onclick="pcBaixarArquivo('${a.id}')">⬇️ Baixar</button></div>
-        </div></div>`;
-    }catch(err){root.innerHTML='';}
-    return;
-  }
-  pcBaixarArquivo(id);
-}
-
-function pcBaixarArquivo(id){
-  const a=_pcDados.driveArqs.find(x=>x.id===id);
-  if(!a||!a.dados) return;
-  const el=document.createElement('a');el.href=a.dados;el.download=a.nome;el.click();
-  toast('⬇️','Baixando '+a.nome);
-}
-
-function pcHtmlEquipe(d,o){
-  const pontosPorColab={};
-  // Simplificado: mostrar colaboradores ativos
-  return`<div class="pc-section-title">👷 Equipe da Obra</div>
-  <div class="card" style="overflow-x:auto">
-  <table class="tbl"><tr><th>Colaborador</th><th>Função</th></tr>
-  ${d.colabs.map(c=>`<tr><td class="n">${c.nome}</td><td>${c.funcao||'—'}</td></tr>`).join('')}
-  </table></div>`;
-}
-
-function pcHtmlContratos(d,o){
-  if(!d.contratos.length) return '<div class="t-empty">Nenhum contrato cadastrado.</div>';
-  return`<div class="pc-section-title">📑 Contratos</div>
-  <div class="card" style="overflow-x:auto">
-  <table class="tbl"><tr><th>Nº</th><th>Descrição</th><th>Fornecedor</th><th style="text-align:right">Valor</th><th style="text-align:right">Pago</th><th>Status</th></tr>
-  ${d.contratos.map(c=>{
-    const pago=d.pgtos.filter(p=>p.contrato_id===c.id).reduce((a,p)=>a+Number(p.valor||0),0);
-    const ok=pago>=Number(c.valor||0)&&Number(c.valor||0)>0;
-    return`<tr>
-      <td style="font-weight:600">${c.numero||'—'}</td>
-      <td class="n">${c.descricao||'—'}</td>
-      <td style="font-size:11px;color:var(--txt2)">${c.fornecedor||'—'}</td>
-      <td style="text-align:right;font-weight:600">${pcFmtR(c.valor)}</td>
-      <td style="text-align:right;color:${ok?'var(--green)':'var(--txt2)'}">${pcFmtR(pago)}</td>
-      <td><span class="b ${ok?'bg':c.prazo&&c.prazo<new Date().toISOString().split('T')[0]?'br':'bn'}">${ok?'✓ Quitado':c.prazo&&c.prazo<new Date().toISOString().split('T')[0]?'⚠ Atrasado':'Em andamento'}</span></td>
-    </tr>`;
-  }).join('')}
-  </table></div>`;
-}
-
-// ════════════════════════════════════════════════
-// PDF PORTAL DO CLIENTE
-// ════════════════════════════════════════════════
-function pcGerarPdf(tab){
-  if(!window.jspdf?.jsPDF){toast('⚠️','Biblioteca PDF não carregada.');return;}
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const d=_pcDados; const o=d.obra; if(!o)return;
-  const W=doc.internal.pageSize.getWidth();
-  const MAR=14;
-  const PRI=[91,143,249],GRN=[34,211,99],RED=[242,92,92],GRY=[100,110,140],DARK=[30,36,58],LIGHT=[240,243,255];
-  let y=MAR;
-
-  // Cabeçalho
-  doc.setFillColor(...PRI);doc.rect(0,0,W,28,'F');
-  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(16);
-  doc.text('ObraTech — Portal do Cliente',MAR,12);
-  doc.setFontSize(9);doc.setFont('helvetica','normal');
-  doc.text(o.nome,MAR,19);
-  doc.text(PC_PDF_TABS[tab]||tab,MAR,24);
-  doc.setFontSize(8);
+  doc.text(o.nome,MAR,18);
   doc.text('Emitido em: '+new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),W-MAR,24,{align:'right'});
   y=36;
-
-  doc.setTextColor(...DARK);
 
   function secTitle(txt){
     doc.setFillColor(...LIGHT);doc.rect(MAR-2,y-4,W-MAR*2+4,8,'F');
@@ -7945,88 +7859,60 @@ function pcGerarPdf(tab){
     if(isHeader){doc.setFillColor(...PRI);doc.rect(MAR,y-5,W-MAR*2,7,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');}
     else{doc.setFont('helvetica','normal');doc.setTextColor(...DARK);doc.setDrawColor(220,224,240);doc.line(MAR,y+2,W-MAR,y+2);}
     doc.setFontSize(8);
-    let x=MAR;
-    cols.forEach((c,i)=>{const w=widths[i]||30;doc.text(String(c||'—').substring(0,Math.floor(w/2)),x+1,y);x+=w;});
+    let x=MAR;cols.forEach((c,i)=>{const w=widths[i]||30;doc.text(String(c||'—').substring(0,Math.floor(w/2)),x+1,y);x+=w;});
     y+=7;
   }
 
+  doc.setTextColor(...DARK);
+
   if(tab==='resumo'){
-    secTitle('📊 Resumo da Obra');
-    [['Obra',o.nome],['Tipo',o.tipo||'—'],['Local',o.local||'—'],['Responsável',o.responsavel||'—'],
-     ['Início',pcFmtDt(o.data_ini)],['Prazo',pcFmtDt(o.data_fim)],['Orçamento',pcFmtR(Number(o.orcamento||0))]
-    ].forEach(([k,v])=>{checkPage(7);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...GRY);doc.text(k+':',MAR,y);doc.setFont('helvetica','normal');doc.setTextColor(...DARK);doc.text(String(v),MAR+36,y);y+=7;});
-    y+=4;
-    const pct=pcPct(d.etapas);
-    secTitle('Avanço Físico: '+pct+'%');
-    doc.setFillColor(220,224,240);doc.rect(MAR,y,W-MAR*2,5,'F');
-    doc.setFillColor(...PRI);doc.rect(MAR,y,(W-MAR*2)*pct/100,5,'F');y+=12;
+    const pct=d.etapas.length?Math.round(d.etapas.reduce((a,e)=>a+Number(e.pct||0),0)/d.etapas.length):0;
     const rec=d.lancs.filter(l=>l.tipo==='Receita').reduce((a,l)=>a+Number(l.valor),0);
     const dep=d.lancs.filter(l=>l.tipo==='Despesa').reduce((a,l)=>a+Number(l.valor),0);
-    secTitle('Resumo Financeiro');
-    [['Receitas',pcFmtR(rec)],['Despesas',pcFmtR(dep)],['Saldo',pcFmtR(rec-dep)]].forEach(([k,v])=>{checkPage(7);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...GRY);doc.text(k+':',MAR,y);doc.setFont('helvetica','normal');doc.setTextColor(...DARK);doc.text(v,MAR+36,y);y+=7;});
-  }
-  else if(tab==='cronograma'){
-    secTitle('📅 Cronograma Físico');
-    tRow(['ETAPA','INÍCIO','FIM','STATUS','%'],[85,22,22,25,12],true);
-    d.etapas.forEach(e=>tRow([e.nome,pcFmtDt(e.inicio),pcFmtDt(e.fim),{plan:'Planejado',prog:'Em andamento',done:'Concluído',late:'Atrasado'}[e.status]||'—',(e.pct||0)+'%'],[85,22,22,25,12],false));
+    secTitle('Informações da Obra');
+    [['Nome',o.nome],['Local',o.local||'—'],['Responsável',o.responsavel||'—'],['Início',fmtDt(o.data_ini||o.dataIni)],['Prazo',fmtDt(o.data_fim||o.dataFim)],['Avanço',pct+'%'],['Orçamento',fmtR(Number(o.orcamento||0))],['Receitas',fmtR(rec)],['Despesas',fmtR(dep)],['Saldo',fmtR(rec-dep)]].forEach(([k,v])=>{checkPage(7);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...GRY);doc.text(k+':',MAR,y);doc.setFont('helvetica','normal');doc.setTextColor(...DARK);doc.text(String(v||'—'),MAR+40,y);y+=7;});
   }
   else if(tab==='financeiro'){
     const rec=d.lancs.filter(l=>l.tipo==='Receita').reduce((a,l)=>a+Number(l.valor),0);
     const dep=d.lancs.filter(l=>l.tipo==='Despesa').reduce((a,l)=>a+Number(l.valor),0);
-    secTitle('Resumo');
-    [['Receitas',pcFmtR(rec)],['Despesas',pcFmtR(dep)],['Saldo',pcFmtR(rec-dep)]].forEach(([k,v])=>{checkPage(7);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...GRY);doc.text(k+':',MAR,y);doc.setFont('helvetica','normal');doc.setTextColor(...DARK);doc.text(v,MAR+36,y);y+=7;});
+    secTitle('Resumo Financeiro');
+    [['Receitas',fmtR(rec)],['Despesas',fmtR(dep)],['Saldo',fmtR(rec-dep)]].forEach(([k,v])=>{checkPage(7);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...GRY);doc.text(k+':',MAR,y);doc.setFont('helvetica','normal');doc.setTextColor(...DARK);doc.text(v,MAR+36,y);y+=7;});
     y+=4;secTitle('Lançamentos');
-    tRow(['DATA','DESCRIÇÃO','CATEGORIA','TIPO','VALOR'],[22,58,32,22,32],true);
-    d.lancs.sort((a,b)=>(b.data||'').localeCompare(a.data||'')).forEach(l=>tRow([pcFmtDt(l.data),l.descricao||'—',l.categoria||'—',l.tipo,(l.tipo==='Despesa'?'-':'+')+(pcFmtR(l.valor))],[22,58,32,22,32],false));
-  }
-  else if(tab==='rdo'){
-    secTitle('📋 RDOs');
-    d.rdos.forEach(r=>{checkPage(30);
-      doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...PRI);doc.text('RDO — '+pcFmtDt(r.data),MAR,y);y+=6;
-      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...DARK);
-      doc.text('Clima: '+(r.clima||'—')+'   Previsto: '+(r.previsto||0)+'   Realizado: '+(r.realizado||0),MAR,y);y+=5;
-      if(r.servicos){doc.text('Serviços: '+r.servicos.substring(0,120),MAR,y);y+=5;}
-      if(r.obs){doc.text('Obs: '+r.obs.substring(0,120),MAR,y);y+=5;}
-      doc.setDrawColor(...PRI);doc.line(MAR,y,W-MAR,y);y+=5;
-    });
+    tRow(['DATA','DESCRIÇÃO','CATEGORIA','TIPO','VALOR'],[22,60,32,20,32],true);
+    d.lancs.sort((a,b)=>(b.data||'').localeCompare(a.data||'')).forEach(l=>tRow([fmtDt(l.data),l.desc||l.descricao||'—',l.cat||l.categoria||'—',l.tipo,(l.tipo==='Despesa'?'-':'+')+fmtR(l.valor)],[22,60,32,20,32],false));
   }
   else if(tab==='qualidade'){
-    secTitle('✅ Não Conformidades');
-    tRow(['Nº','DESCRIÇÃO','GRAU','PRAZO','STATUS'],[14,82,18,24,28],true);
-    d.ncs.forEach(n=>tRow(['#'+(n.numero||n.id.substring(0,6)),n.descricao||'—',n.grau||'—',pcFmtDt(n.prazo),n.status],[14,82,18,24,28],false));
+    secTitle('Não Conformidades');
+    tRow(['Nº','DESCRIÇÃO','GRAU','PRAZO','STATUS'],[14,84,18,24,26],true);
+    d.ncs.forEach(n=>tRow(['#'+(n.numero||n.id?.substring(0,6)),n.desc||n.descricao||'—',n.grau||'—',fmtDt(n.prazo),n.status],[14,84,18,24,26],false));
+  }
+  else if(tab==='estoque'){
+    secTitle('Estoque');
+    const sal={};d.movs.forEach(m=>{sal[m.estId||m.estoque_id]=(sal[m.estId||m.estoque_id]||0)+(m.tipo==='entrada'?m.qtd||m.quantidade:-m.qtd||m.quantidade);});
+    tRow(['MATERIAL','UN.','SALDO','MÍN.','STATUS'],[80,14,18,18,36],true);
+    d.estoque.forEach(e=>{const q=sal[e.id]||0;tRow([e.material,e.un||e.unidade||'—',String(q),String(e.min||e.estoque_min||0),q>=(e.min||e.estoque_min||0)?'OK':'Baixo'],[80,14,18,18,36],false);});
   }
   else if(tab==='equipe'){
-    secTitle('👷 Equipe');
+    secTitle('Equipe');
     tRow(['COLABORADOR','FUNÇÃO'],[100,66],true);
     d.colabs.forEach(c=>tRow([c.nome,c.funcao||'—'],[100,66],false));
   }
   else if(tab==='contratos'){
-    secTitle('📑 Contratos');
+    secTitle('Contratos');
     tRow(['Nº','DESCRIÇÃO','FORNECEDOR','VALOR','PAGO','STATUS'],[14,55,32,24,24,17],true);
     d.contratos.forEach(c=>{
-      const pago=d.pgtos.filter(p=>p.contrato_id===c.id).reduce((a,p)=>a+Number(p.valor||0),0);
-      tRow([c.numero||'—',c.descricao||'—',c.fornecedor||'—',pcFmtR(c.valor),pcFmtR(pago),pago>=Number(c.valor||0)&&Number(c.valor)>0?'Quitado':'Aberto'],[14,55,32,24,24,17],false);
+      const pago=d.pgtos.filter(p=>(p.contratoId||p.contrato_id)===c.id).reduce((a,p)=>a+Number(p.valor||0),0);
+      tRow([c.numero||'—',c.descricao||'—',c.forn||c.fornecedor||'—',fmtR(c.valor),fmtR(pago),pago>=Number(c.valor||0)&&Number(c.valor)>0?'Quitado':'Aberto'],[14,55,32,24,24,17],false);
     });
-  }
-  else if(tab==='estoque'){
-    secTitle('📦 Estoque');
-    tRow(['MATERIAL','UN.','SALDO','MÍN.','STATUS'],[80,14,18,18,36],true);
-    const sal={};d.movs.forEach(m=>{sal[m.estoque_id]=(sal[m.estoque_id]||0)+(m.tipo==='entrada'?m.quantidade:-m.quantidade);});
-    d.estoque.forEach(e=>{const q=sal[e.id]||0;tRow([e.material,e.unidade||'—',String(q),String(e.estoque_min||0),q>=(e.estoque_min||0)?'OK':'Baixo'],[80,14,18,18,36],false);});
   }
 
   // Rodapé
   const pages=doc.internal.getNumberOfPages();
-  for(let i=1;i<=pages;i++){
-    doc.setPage(i);doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...GRY);
-    doc.text('ObraTech — Portal do Cliente | '+o.nome,MAR,290);
-    doc.text('Página '+i+'/'+pages,W-MAR,290,{align:'right'});
-  }
-
-  const arq='ObraTech_'+(o.nome||'obra').replace(/[^a-zA-Z0-9]/g,'_')+'_'+(PC_PDF_TABS[tab]||tab).replace(/[^a-zA-Z0-9]/g,'_')+'.pdf';
-  doc.save(arq);
-  toast('📄','PDF gerado: '+arq);
+  for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...GRY);doc.text('ObraTech — Portal do Cliente | '+o.nome,MAR,290);doc.text('Página '+i+'/'+pages,W-MAR,290,{align:'right'});}
+  doc.save('ObraTech_'+(o.nome||'obra').replace(/[^a-zA-Z0-9]/g,'_')+'_'+(PC_PDF_TABS[tab]||tab).replace(/[^a-zA-Z0-9]/g,'_')+'.pdf');
+  toast('📄','PDF gerado!');
 }
+
 </script>
 
 <script>
