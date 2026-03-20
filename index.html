@@ -1542,7 +1542,12 @@ async function iniciarSessao(session){
         mostrarApp();
         renderDash(); fillSelects(); renderObras();
         toast('👋','Bem-vindo, '+cachedNome.split(' ')[0]+'!');
-        carregarDadosSupabase().then(()=>{renderDash();fillSelects();renderObras();});
+        carregarDadosSupabase().then(()=>{
+          renderDash();fillSelects();renderObras();
+          // Re-render aba ativa se for cronograma
+          const pCron=document.getElementById('p-cronograma');
+          if(pCron&&pCron.classList.contains('on')) renderCron();
+        });
       }
       
       // Atualizar perfil em background (sem bloquear)
@@ -1584,7 +1589,12 @@ async function iniciarSessao(session){
         mostrarApp();
         renderDash(); fillSelects(); renderObras();
         toast('👋','Bem-vindo, '+perfil.nome.split(' ')[0]+'!');
-        carregarDadosSupabase().then(()=>{renderDash();fillSelects();renderObras();});
+        carregarDadosSupabase().then(()=>{
+          renderDash();fillSelects();renderObras();
+          // Re-render aba ativa se for cronograma
+          const pCron=document.getElementById('p-cronograma');
+          if(pCron&&pCron.classList.contains('on')) renderCron();
+        });
       }
 
     } else {
@@ -1615,7 +1625,12 @@ async function iniciarSessao(session){
           mostrarApp();
           renderDash(); fillSelects(); renderObras();
           toast('⚠️','Conexão lenta — usando dados locais.');
-          carregarDadosSupabase().then(()=>{renderDash();fillSelects();renderObras();});
+          carregarDadosSupabase().then(()=>{
+          renderDash();fillSelects();renderObras();
+          // Re-render aba ativa se for cronograma
+          const pCron=document.getElementById('p-cronograma');
+          if(pCron&&pCron.classList.contains('on')) renderCron();
+        });
         }
         return;
       }
@@ -2937,12 +2952,12 @@ const SAUDE_STYLE={
 function renderCron(){
   // Popular seletor
   const cronSel=document.getElementById('cron-obra-sel');
-  if(cronSel&&(!cronSel.options.length||cronSel.options.length!==DB.obras.length+0)){
+  if(cronSel){
     const prev=cronSel.value;
     cronSel.innerHTML=DB.obras.map(o=>`<option value="${o.id}">${o.nome}</option>`).join('');
-    if(prev)cronSel.value=prev;
-    else if(DB.sel)cronSel.value=DB.sel;
-    else if(DB.obras.length)cronSel.value=DB.obras[0].id;
+    if(prev&&DB.obras.find(o=>o.id===prev)) cronSel.value=prev;
+    else if(DB.sel) cronSel.value=DB.sel;
+    else if(DB.obras.length) cronSel.value=DB.obras[0].id;
   }
   const selId=cronSel?cronSel.value:null;
   const obra=selId?DB.obras.find(o=>o.id===selId):null;
@@ -7373,7 +7388,12 @@ async function initObraTech(){
       if(cachedPapel==='cliente'){
         carregarDadosCliente(session.user.id);
       } else {
-        carregarDadosSupabase().then(()=>{renderDash();fillSelects();renderObras();});
+        carregarDadosSupabase().then(()=>{
+          renderDash();fillSelects();renderObras();
+          // Re-render aba ativa se for cronograma
+          const pCron=document.getElementById('p-cronograma');
+          if(pCron&&pCron.classList.contains('on')) renderCron();
+        });
         iniciarRealtime();
         adicionarBotaoLogout();
       }
