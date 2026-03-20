@@ -581,7 +581,7 @@ nav{padding:4px 0;flex:1}
     <div class="ni" data-p="clientes" onclick="goPage('clientes')"><span class="ic">👤</span>Portal Clientes</div>
   </nav>
   <div class="sbfoot">
-    <div class="av" id="user-av" onclick="openUserModal()">?</div>
+    <div class="av" id="user-av" onclick="openUserModal()" style="overflow:hidden">?</div>
     <div><div style="font-size:12px;font-weight:600" id="user-name">Configurar usuário</div><div style="font-size:10px;color:var(--txt3)" id="user-role">Clique para configurar</div></div>
   </div>
 </div>
@@ -686,12 +686,7 @@ nav{padding:4px 0;flex:1}
     </div>
     <div id="gantt-area"></div>
     <div id="gantt-empty" class="empty" style="display:none;padding:20px"><div class="eic" style="font-size:24px">📅</div><div class="etit">Nenhuma etapa</div><div class="edesc">Adicione etapas ao cronograma</div></div>
-    <div style="display:flex;gap:11px;margin-top:9px;font-size:10px;color:var(--txt3);border-top:1px solid var(--border);padding-top:9px">
-      <span><span style="display:inline-block;width:9px;height:9px;background:var(--green2);border-radius:2px;vertical-align:middle;margin-right:3px"></span>Concluído</span>
-      <span><span style="display:inline-block;width:9px;height:9px;background:var(--primary);border-radius:2px;vertical-align:middle;margin-right:3px"></span>Em andamento</span>
-      <span><span style="display:inline-block;width:9px;height:9px;background:var(--red2);border-radius:2px;vertical-align:middle;margin-right:3px"></span>Atrasado</span>
-      <span><span style="display:inline-block;width:9px;height:9px;background:var(--border2);border-radius:2px;vertical-align:middle;margin-right:3px"></span>Planejado</span>
-    </div>
+
   </div>
   <div class="card"><div class="ct" style="margin-bottom:9px">📈 Curva S</div><div class="cw" style="height:190px"><canvas id="ch-curvas"></canvas></div></div>
 </div>
@@ -1532,6 +1527,11 @@ async function iniciarSessao(session){
       
       // Mostrar app IMEDIATAMENTE com dados do cache
       _atualizarSidebar(cachedNome, cachedPapel);
+      // Restaurar foto do cache
+      if(DB.user.foto){
+        const av=document.getElementById('user-av');
+        if(av) av.innerHTML=`<img src="${DB.user.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      }
       if(cachedPapel==='cliente'){
         mostrarApp();
         const unEl=document.getElementById('pc-user-nome');
@@ -2434,7 +2434,7 @@ function updateSbObra(){
   const tag=document.getElementById('obra-tag');
   if(_obrasFiltro===null||(DB.obras.length>0&&_obrasFiltro.length===DB.obras.length)){
     el.innerHTML='<span style="color:var(--txt3);font-weight:400">Todas as obras</span>';
-    tag.textContent='Todas';
+    tag.textContent='';
   } else if(_obrasFiltro&&_obrasFiltro.length===1){
     const o=DB.obras.find(x=>x.id===_obrasFiltro[0]);
     if(o){const cor=obraColor(o);el.innerHTML=`${o.nome} <span class="dot dot-${cor==='fin'?'g':cor}"></span>`;tag.textContent=o.nome;}
@@ -2878,7 +2878,7 @@ function ganttSaude(obra, etapa){
   if(esp===null)return pct>0?'ok':'future';
   if(esp===0) return pct>0?'ahead':'future';
   const diff=pct-esp;
-  if(diff>=0) return diff>=10?'ahead':'ok';  // igual ou acima = no prazo/adiantado
+  if(diff>=0) return diff>=5?'ahead':'ok';   // 5%+ acima = adiantado
   return'late';                               // abaixo = atrasado
 }
 
@@ -2934,27 +2934,23 @@ function renderCron(){
     const marca=(esp!==null&&esp>0&&esp<100)?esp:null;
     const espLabel=e.pctEsp!=null?`Manual: ${e.pctEsp}%`:(esp!==null?`Calculado: ${esp}%`:'—');
     const tip=`${e.nome} | Realizado: ${pct}% | Esperado: ${espLabel} | ${st.label}`;
-    return `<div class="gr" title="${tip}" style="min-height:36px;margin-bottom:8px;align-items:center">
+    return `<div class="gr" title="${tip}" style="min-height:28px;margin-bottom:6px;align-items:center">
       <div class="gn" style="font-size:11px;font-weight:600;color:var(--txt)">${e.nome}</div>
-      <div style="flex:1;position:relative;height:22px">
-        <!-- Trilha -->
-        <div style="position:absolute;inset:0;background:${st.track};border-radius:5px;border:1px solid ${st.bg}40"></div>
-        <!-- Barra de progresso -->
-        <div style="position:absolute;left:0;top:0;bottom:0;width:${pct}%;background:${st.bg};border-radius:${pct>=100?'5px':'5px 0 0 5px'};box-shadow:0 0 8px ${st.glow};transition:width .6s ease;display:flex;align-items:center;justify-content:center;min-width:${pct>0?'20px':'0'}">
-          ${pct>8?`<span style="font-size:9px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5)">${pct>=100?'✓':pct+'%'}</span>`:''}
+      <div style="flex:1;position:relative;height:16px">
+        <div style="position:absolute;inset:0;background:${st.track};border-radius:4px;border:1px solid ${st.bg}30"></div>
+        <div style="position:absolute;left:0;top:0;bottom:0;width:${pct}%;background:${st.bg};border-radius:${pct>=100?'4px':'4px 0 0 4px'};transition:width .6s ease;display:flex;align-items:center;justify-content:center;min-width:${pct>0?'18px':'0'}">
+          ${pct>8?`<span style="font-size:8px;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)">${pct>=100?'✓':pct+'%'}</span>`:''}
         </div>
-        ${pct>0&&pct<=8?`<span style="position:absolute;left:${pct+1}%;top:50%;transform:translateY(-50%);font-size:9px;font-weight:700;color:${st.bg}">${pct}%</span>`:''}
-        <!-- Marca do esperado -->
-        ${marca!==null?`<div style="position:absolute;left:${marca}%;top:0;bottom:0;width:2px;background:rgba(255,255,255,.9);z-index:3;border-radius:2px" title="Esperado: ${marca}%">
-          <div style="position:absolute;top:-3px;left:50%;transform:translateX(-50%);width:6px;height:6px;background:#fff;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,.5)"></div>
+        ${pct>0&&pct<=8?`<span style="position:absolute;left:${pct+1}%;top:50%;transform:translateY(-50%);font-size:8px;font-weight:700;color:${st.bg}">${pct}%</span>`:''}
+        ${marca!==null?`<div style="position:absolute;left:${marca}%;top:-2px;bottom:-2px;width:2px;background:rgba(255,255,255,.95);z-index:3;border-radius:1px">
+          <div style="position:absolute;top:-2px;left:50%;transform:translateX(-50%);width:5px;height:5px;background:#fff;border-radius:50%;box-shadow:0 0 3px rgba(0,0,0,.4)"></div>
         </div>`:''}
       </div>
-      <!-- Status badge + botões -->
-      <div style="width:120px;flex-shrink:0;display:flex;align-items:center;gap:4px;margin-left:8px">
-        <span style="font-size:10px;font-weight:700;color:#fff;background:${st.bg};padding:2px 7px;border-radius:10px;white-space:nowrap">${st.label}</span>
-        <button class="btn sm ico" onclick="editarEspEtapa('${e.id}')" title="Definir % esperado" style="font-size:10px;padding:0 5px">🎯</button>
-        <button class="btn sm ico" onclick="openModal('etapa','${e.id}')">✏️</button>
-        <button class="btn sm ico" onclick="delEtapa('${e.id}')">🗑️</button>
+      <div style="width:130px;flex-shrink:0;display:flex;align-items:center;gap:3px;margin-left:8px">
+        <span style="font-size:9px;font-weight:700;color:#fff;background:${st.bg};padding:2px 6px;border-radius:8px;white-space:nowrap;flex:1;text-align:center">${st.label}</span>
+        <button class="btn sm ico" onclick="editarEspEtapa('${e.id}')" title="Definir % esperado" style="padding:2px 5px;font-size:11px">🎯</button>
+        <button class="btn sm ico" onclick="openModal('etapa','${e.id}')" style="padding:2px 5px">✏️</button>
+        <button class="btn sm ico" onclick="delEtapa('${e.id}')" style="padding:2px 5px">🗑️</button>
       </div>
     </div>`;
   }).join('');
@@ -2965,8 +2961,8 @@ function renderCron(){
     </div>
     ${ganttRows}
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;padding-top:10px;border-top:1px solid var(--border);font-size:10px;color:var(--txt3);align-items:center">
-      ${Object.entries(SAUDE_STYLE).map(([,v])=>`<span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:12px;height:12px;background:${v.bg};border-radius:3px"></span><span style="color:var(--txt2);font-size:11px">${v.label}</span></span>`).join('')}
-      <span style="margin-left:auto;display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txt3)"><span style="display:inline-block;width:2px;height:12px;background:rgba(255,255,255,.8);border-radius:2px"></span>● Esperado hoje</span>
+      ${Object.entries(SAUDE_STYLE).map(([,v])=>`<span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:10px;height:10px;background:${v.bg};border-radius:2px;flex-shrink:0"></span><span style="color:var(--txt2);font-size:11px">${v.label}</span></span>`).join('')}
+      <span style="margin-left:auto;display:flex;align-items:center;gap:4px;font-size:11px;color:var(--txt3)"><span style="display:inline-block;width:2px;height:10px;background:rgba(255,255,255,.7);border-radius:1px"></span>Esperado hoje</span>
     </div>`;
 
   setTimeout(()=>{
@@ -3003,7 +2999,6 @@ function editarEspEtapa(id){
       </div>
       <div class="mof">
         <button class="btn" onclick="closeModal()">Cancelar</button>
-        <button class="btn" onclick="(()=>{const e2=DB.etapas.find(x=>String(x.id)==='${id}');if(e2){e2.pctEsp=null;supaUpdate('etapas','${id}',{pct_esperado:null});save();renderCron();closeModal();toast('✅','Cálculo automático restaurado.');}})()">↺ Automático</button>
         <button class="btn pri" onclick="(()=>{
           const v=document.getElementById('esp-val').value;
           const n=v===''?null:Math.min(100,Math.max(0,Number(v)));
@@ -5300,12 +5295,57 @@ function openModal(type,editId=null){
   }
   else if(type==='user'){
     title='⚙️ Configurações';
-    body=`<div class="g g2">
-      <div class="fg" style="grid-column:span 2"><label class="lbl">Seu Nome</label><input class="inp" id="u-nome" value="${DB.user.nome||''}" placeholder="Ex: Carlos Ferreira"></div>
-      <div class="fg"><label class="lbl">Cargo</label><input class="inp" id="u-cargo" value="${DB.user.cargo||''}" placeholder="Ex: Engenheiro, Diretor..."></div>
-      <div class="fg"><label class="lbl">Iniciais (avatar)</label><input class="inp" id="u-ini" value="${DB.user.ini||''}" maxlength="3" placeholder="CF"></div>
+    const fotoAtual=DB.user.foto||'';
+    body=`<div style="display:flex;flex-direction:column;gap:16px">
+      <!-- Foto de perfil -->
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="position:relative;flex-shrink:0">
+          <div id="u-foto-preview" style="width:72px;height:72px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;overflow:hidden;border:3px solid var(--border2)">
+            ${fotoAtual?`<img src="${fotoAtual}" style="width:100%;height:100%;object-fit:cover">`:(DB.user.ini||DB.user.nome?.charAt(0)||'?')}
+          </div>
+          <label style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid var(--bg2)" title="Alterar foto">
+            📷
+            <input type="file" accept="image/*" style="display:none" onchange="(e=>{const f=e.target.files[0];if(!f)return;if(f.size>2*1024*1024){toast('⚠️','Foto muito grande. Máximo 2MB.');return;}const r=new FileReader();r.onload=ev=>{const src=ev.target.result;document.getElementById('u-foto-preview').innerHTML='<img src='+JSON.stringify(src)+' style=width:100%;height:100%;object-fit:cover>';window._novaFoto=src;};r.readAsDataURL(f);})(event)">
+          </label>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;color:var(--txt)">${DB.user.nome||'Usuário'}</div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:2px">${DB.user.cargo||_papelAtual||''}</div>
+          <div style="font-size:10px;color:var(--txt3);margin-top:4px">Clique no 📷 para alterar a foto</div>
+        </div>
+      </div>
+      <!-- Campos -->
+      <div class="g g2">
+        <div class="fg" style="grid-column:span 2"><label class="lbl">Nome completo</label><input class="inp" id="u-nome" value="${DB.user.nome||''}" placeholder="Ex: Carlos Ferreira"></div>
+        <div class="fg"><label class="lbl">Cargo / Função</label><input class="inp" id="u-cargo" value="${DB.user.cargo||''}" placeholder="Ex: Engenheiro, Diretor..."></div>
+        <div class="fg"><label class="lbl">Iniciais (avatar)</label><input class="inp" id="u-ini" value="${DB.user.ini||''}" maxlength="3" placeholder="CF"></div>
+      </div>
     </div>`;
-    onSave=()=>{DB.user={nome:document.getElementById('u-nome').value.trim(),cargo:document.getElementById('u-cargo').value.trim(),ini:document.getElementById('u-ini').value.trim().toUpperCase()};save();updateSbObra();toast('✅','Configurações salvas!');return true;};
+    onSave=()=>{
+      const nome=document.getElementById('u-nome').value.trim();
+      const cargo=document.getElementById('u-cargo').value.trim();
+      const ini=document.getElementById('u-ini').value.trim().toUpperCase();
+      const foto=window._novaFoto||DB.user.foto||'';
+      DB.user={nome,cargo,ini,foto};
+      window._novaFoto=null;
+      save();
+      // Atualizar avatar no sidebar
+      const av=document.getElementById('user-av');
+      if(av){
+        if(foto) av.innerHTML=`<img src="${foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+        else av.textContent=ini||nome.charAt(0)||'?';
+      }
+      // Atualizar nome/cargo no perfil Supabase
+      if(supa&&_usuarioAtual){
+        supa.from('perfis').update({nome,cargo}).eq('id',_usuarioAtual.id).then(({error})=>{
+          if(error) console.warn('Perfil update:',error.message);
+          else { localStorage.setItem('_ot_nome',nome); }
+        });
+      }
+      updateSbObra();
+      toast('✅','Perfil atualizado!');
+      return true;
+    };
   }
 
   else if(type==='demanda'){
