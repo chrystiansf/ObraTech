@@ -1423,11 +1423,14 @@ async function iniciarSessao(session){
   if(!session){ mostrarLogin(); return; }
   try{
     _usuarioAtual = session.user;
-    console.log('Buscando perfil...');
 
-    // Buscar perfil com timeout de 20 segundos
+    // Mostrar loading imediatamente enquanto busca perfil
+    document.getElementById('loading-screen').style.display='flex';
+    document.getElementById('auth-screen').style.display='none';
+
+    // Buscar perfil com timeout de 8 segundos
     const perfPromise = supa.from('perfis').select('*').eq('id', session.user.id).maybeSingle();
-    const timeoutPromise = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),30000));
+    const timeoutPromise = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000));
     const {data:perfil, error:perfErr} = await Promise.race([perfPromise, timeoutPromise]);
 
     if(perfErr) console.warn('Perfil erro:', perfErr?.message);
@@ -1449,9 +1452,13 @@ async function iniciarSessao(session){
       }
 
       if(perfil.papel==='cliente'){
-        // Portal do cliente: carregar obras liberadas
+        // Portal do cliente: mostrar imediatamente
         mostrarApp();
+        // Mostrar nome imediatamente
+        const unEl=document.getElementById('pc-user-nome');
+        if(unEl) unEl.textContent=perfil.nome;
         toast('👋','Bem-vindo ao Portal, '+perfil.nome.split(' ')[0]+'!');
+        // Carregar dados em background
         carregarDadosCliente(perfil.id);
       } else {
         // Mostrar app imediatamente com dados do cache local
@@ -1462,8 +1469,8 @@ async function iniciarSessao(session){
         carregarDadosSupabase().then(()=>{
           renderDash(); fillSelects(); renderObras();
         });
-        // Diagnóstico em background sem bloquear
-        diagnosticarSupabase();
+        // Diagnóstico desativado para não atrasar carregamento
+        // diagnosticarSupabase();
       }
 
     } else {
@@ -1540,7 +1547,7 @@ async function carregarDadosSupabase(){
       safe(supa.from('etapas').select('*').eq('empresa_id',eid).order('criado_em')),
       safe(supa.from('colaboradores').select('*').eq('empresa_id',eid).order('nome')),
       safe(supa.from('lancamentos').select('*').eq('empresa_id',eid).order('data',{ascending:false})),
-      safe(supa.from('rdos').select('*').eq('empresa_id',eid).order('data',{ascending:false})),
+      safe(supa.from('rdos').select('id,obra_id,data,clima,previsto,realizado,servicos,materiais,obs,status').eq('empresa_id',eid).order('data',{ascending:false})),
       safe(supa.from('estoque').select('*').eq('empresa_id',eid).order('material')),
       safe(supa.from('movimentacoes').select('*').eq('empresa_id',eid).order('data',{ascending:false})),
       safe(supa.from('contratos').select('*').eq('empresa_id',eid).order('criado_em')),
@@ -8068,9 +8075,9 @@ if(window.matchMedia('(display-mode: standalone)').matches || window.navigator.s
       { src: icon512, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
     ],
     shortcuts: [
-      { name: 'Dashboard', url: '/?p=dashboard' },
-      { name: 'RDO Diário', url: '/?p=rdo' },
-      { name: 'Obras', url: '/?p=obras' }
+      { name: 'Dashboard', url: window.location.origin+'/' },
+      { name: 'RDO', url: window.location.origin+'/' },
+      { name: 'Obras', url: window.location.origin+'/' }
     ]
   };
   const blob = new Blob([JSON.stringify(manifest)], {type:'application/manifest+json'});
