@@ -578,7 +578,8 @@ nav{padding:4px 0;flex:1}
     <div class="ni" data-p="fornecedores" onclick="goPage('fornecedores')"><span class="ic">🏭</span>Fornecedores</div>
     <div class="nsec">Saídas</div>
     <div class="ni" data-p="relatorios" onclick="goPage('relatorios')"><span class="ic">📈</span>Relatórios</div>
-    <div class="ni" data-p="clientes" onclick="goPage('clientes')"><span class="ic">👤</span>Portal Clientes</div>
+    <div class="ni" data-p="clientes" id="ni-clientes" onclick="goPage('clientes');setTimeout(()=>usrTab('clientes'),30)"><span class="ic">👤</span>Portal Clientes</div>
+    <div class="ni" data-p="clientes" id="ni-equipe-usr" onclick="goPage('clientes');setTimeout(()=>usrTab('equipe'),30)"><span class="ic">👷</span>Equipe / Usuários</div>
   </nav>
   <div class="sbfoot">
     <div class="av" id="user-av" onclick="openUserModal()" style="overflow:hidden">?</div>
@@ -1149,13 +1150,35 @@ nav{padding:4px 0;flex:1}
 
 <!-- CLIENTES / PORTAL -->
 <div class="page" id="p-clientes">
-  <div class="card">
-    <div class="ch">
-      <div><div class="ct">👤 Portal Clientes</div><div class="cs">Convide clientes para acompanhar as obras</div></div>
-      <button class="btn sm" onclick="sincronizarClientes()">🔄 Sincronizar</button>
-      <button class="btn sm pri" onclick="abrirModalConvite()">✉️ Convidar Cliente</button>
+  <!-- Tabs -->
+  <div style="display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border)">
+    <div class="usr-tab on" data-ut="clientes" onclick="usrTab('clientes')" style="padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--primary);color:var(--primary)">👤 Portal Clientes</div>
+    <div class="usr-tab" data-ut="equipe" onclick="usrTab('equipe')" style="padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--txt3)">👷 Equipe / Usuários</div>
+  </div>
+
+  <!-- Painel Clientes -->
+  <div id="usr-panel-clientes">
+    <div class="card">
+      <div class="ch">
+        <div><div class="ct">👤 Portal Clientes</div><div class="cs">Convide clientes para acompanhar as obras</div></div>
+        <button class="btn sm" onclick="sincronizarClientes()">🔄 Sincronizar</button>
+        <button class="btn sm pri" onclick="abrirModalConvite()">✉️ Convidar Cliente</button>
+      </div>
+      <div id="clientes-lista" style="margin-top:12px"></div>
     </div>
-    <div id="clientes-lista" style="margin-top:12px"></div>
+  </div>
+
+  <!-- Painel Equipe -->
+  <div id="usr-panel-equipe" style="display:none">
+    <div class="card">
+      <div class="ch">
+        <div><div class="ct">👷 Equipe / Usuários do Sistema</div><div class="cs">Convide funcionários e gerencie permissões de acesso por módulo</div></div>
+        <button class="btn sm pri" onclick="abrirModalConviteEquipe()">✉️ Convidar Funcionário</button>
+      </div>
+      <div id="equipe-usuarios-lista" style="margin-top:12px">
+        <div class="t-empty">Carregando usuários...</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1623,6 +1646,13 @@ async function iniciarSessao(session){
       _papelAtual = perfil.papel;
       DB.user.nome  = perfil.nome;
       DB.user.cargo = perfil.cargo || perfil.papel;
+      // Aplicar restrições de módulos se tiver permissões definidas
+      if(perfil.permissoes){
+        try{
+          const perms=JSON.parse(perfil.permissoes);
+          setTimeout(()=>aplicarRestricoesPerfil(perms),200);
+        }catch(e){}
+      }
 
       // Salvar no cache local para próximos logins serem instantâneos
       localStorage.setItem('_ot_empresa_id', perfil.empresa_id);
@@ -2037,7 +2067,7 @@ function adicionarBotaoLogout(){
 // BANCO DE DADOS — localStorage
 // ═══════════════════════════════════════════
 const KEY='obratech_v1';
-let DB={user:{nome:'',cargo:'',ini:''},obras:[],etapas:[],rdos:[],colabs:[],pontos:[],lancs:[],estoque:[],movs:[],ncs:[],contratos:[],pgtos:[],drive:{'/':{}},centros:[],categorias:['Mão de Obra','Materiais','Equipamentos','Serviços','Administração','Impostos','Outros'],fornecedores:[],demandas:[],medicoes:[],checklists:[],sel:null,nid:1};
+let DB={user:{nome:'',cargo:'',ini:''},obras:[],etapas:[],rdos:[],colabs:[],pontos:[],lancs:[],estoque:[],movs:[],ncs:[],contratos:[],pgtos:[],drive:{'/':{}},centros:[],categorias:['Mão de Obra','Materiais','Equipamentos','Serviços','Administração','Impostos','Outros'],fornecedores:[],demandas:[],medicoes:[],checklists:[],equipeUsuarios:[],sel:null,nid:1};
 function load(){try{const s=localStorage.getItem(KEY);if(s){DB=Object.assign({},DB,JSON.parse(s));if(!DB.centros)DB.centros=[];if(!Array.isArray(DB.categorias)||!DB.categorias.length)DB.categorias=['Mão de Obra','Materiais','Equipamentos','Serviços','Administração','Impostos','Outros'];if(!DB.fornecedores)DB.fornecedores=[];if(!DB.contratos)DB.contratos=[];if(!DB.medicoes)DB.medicoes=[];if(!DB.checklists)DB.checklists=[];
   if(!DB.unidades)DB.unidades=['sc','m³','un','kg','lt','m²','ml','cx','pc','vb','gl','t','rl'];if(!DB.pgtos)DB.pgtos=[];}}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){toast('⚠️','Erro ao salvar! Dados podem ser perdidos.');}}
@@ -2053,6 +2083,333 @@ function uuidv4(){
 // GESTÃO DE CLIENTES (Portal)
 // ════════════════════════════════════════════════
 let _clientes = [];
+
+
+// ═══════════════════════════════════════════════════════════
+// EQUIPE / USUÁRIOS DO SISTEMA
+// ═══════════════════════════════════════════════════════════
+
+const MODULOS_SISTEMA=[
+  {id:"dashboard",   label:"Dashboard",       ic:"📊"},
+  {id:"obras",       label:"Obras",           ic:"🏗️"},
+  {id:"cronograma",  label:"Cronograma",      ic:"📅"},
+  {id:"rdo",         label:"RDO Diário",      ic:"📋"},
+  {id:"equipe",      label:"Equipe & Ponto",  ic:"👷"},
+  {id:"estoque",     label:"Estoque",         ic:"📦"},
+  {id:"financeiro",  label:"Financeiro",      ic:"💰"},
+  {id:"contratos",   label:"Contratos",       ic:"📑"},
+  {id:"drive",       label:"Drive / GED",     ic:"📁"},
+  {id:"qualidade",   label:"Qualidade",       ic:"✅"},
+  {id:"demandas",    label:"Demandas",        ic:"📋"},
+  {id:"fornecedores",label:"Fornecedores",    ic:"🏭"},
+  {id:"clientes",    label:"Clientes/Equipe", ic:"👥"},
+  {id:"relatorios",  label:"Relatórios",      ic:"📈"},
+];
+
+const PAPEIS_PRESET={
+  admin:     MODULOS_SISTEMA.map(m=>m.id),
+  gestor:    ["dashboard","obras","cronograma","rdo","equipe","estoque","financeiro","contratos","drive","qualidade","demandas","fornecedores","relatorios"],
+  financeiro:["dashboard","obras","financeiro","contratos","relatorios"],
+  operacional:["dashboard","obras","cronograma","rdo","equipe","estoque","drive","qualidade","demandas"],
+  visualizador:["dashboard","obras","cronograma","rdo","drive"],
+};
+
+function usrTab(tab){
+  document.querySelectorAll(".usr-tab").forEach(t=>{
+    const on=t.dataset.ut===tab;
+    t.style.borderBottomColor=on?"var(--primary)":"transparent";
+    t.style.color=on?"var(--primary)":"var(--txt3)";
+  });
+  document.getElementById("usr-panel-clientes").style.display=tab==="clientes"?"block":"none";
+  document.getElementById("usr-panel-equipe").style.display=tab==="equipe"?"block":"none";
+  if(tab==="equipe") carregarEquipeUsuarios();
+}
+
+async function carregarEquipeUsuarios(){
+  const el=document.getElementById("equipe-usuarios-lista");
+  if(!el)return;
+  if(!supa||!_empresaId){el.innerHTML='<div class="t-empty">Sem conexão.</div>';return;}
+  el.innerHTML='<div class="t-empty">Carregando...</div>';
+  const {data,error}=await supa.from("perfis")
+    .select("*").eq("empresa_id",_empresaId)
+    .not("papel","eq","cliente")
+    .order("nome");
+  if(error||!data){el.innerHTML='<div class="t-empty">Erro ao carregar usuários.</div>';return;}
+  DB.equipeUsuarios=data;
+  renderEquipeUsuarios(data);
+}
+
+function renderEquipeUsuarios(usuarios){
+  const el=document.getElementById("equipe-usuarios-lista");
+  if(!el)return;
+  if(!usuarios?.length){
+    el.innerHTML='<div class="t-empty">Nenhum usuário cadastrado além de você. Clique em "✉️ Convidar Funcionário" para começar.</div>';
+    return;
+  }
+  const papelLabel={admin:"Administrador",gestor:"Gestor",financeiro:"Financeiro",operacional:"Operacional",visualizador:"Visualizador",cliente:"Cliente"};
+  const papelCor={admin:"var(--primary)",gestor:"var(--green)",financeiro:"var(--yellow)",operacional:"var(--txt2)",visualizador:"var(--txt3)"};
+  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">'+
+    usuarios.map(u=>{
+      const pems=u.permissoes?JSON.parse(u.permissoes):PAPEIS_PRESET[u.papel]||[];
+      const modAtivos=MODULOS_SISTEMA.filter(m=>pems.includes(m.id));
+      const isSelf=u.id===_usuarioAtual?.id;
+      return '<div class="card" style="padding:14px;position:relative">'+
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'+
+          '<div style="width:40px;height:40px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0">'+
+            (u.nome?.charAt(0)||"?").toUpperCase()+'</div>'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-weight:700;font-size:13px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+( u.nome||"—")+'</div>'+
+            '<div style="font-size:11px;color:var(--txt3)">'+
+            (u.cargo?u.cargo+' · ':'')+
+            (u.email?'<span style="color:var(--txt3)">'+u.email+'</span>':u.papel||'—')+
+            (isSelf?' <span style="color:var(--primary)">(você)</span>':'')+
+          '</div>'+
+          '</div>'+
+          '<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--bg3);color:'+( papelCor[u.papel]||"var(--txt2)")+'">'+( papelLabel[u.papel]||u.papel)+'</span>'+
+        '</div>'+
+        '<div style="font-size:10px;color:var(--txt3);margin-bottom:8px">Módulos com acesso:</div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">'+
+          modAtivos.map(m=>'<span style="font-size:10px;padding:2px 6px;background:var(--bg3);border-radius:4px;border:1px solid var(--border)">'+m.ic+" "+m.label+'</span>').join("")+
+          (modAtivos.length===0?'<span style="font-size:10px;color:var(--txt3);font-style:italic">Sem permissões</span>':'')+
+        '</div>'+
+        (!isSelf?
+          '<div style="display:flex;gap:6px">'+
+            '<button class="btn sm" style="flex:1" onclick="abrirEditarPermissoes(\''+u.id+'\')">⚙️ Permissões</button>'+
+            '<button class="btn sm ico" onclick="removerAcessoUsuario(\''+u.id+'\',\''+u.nome+'\')">🗑️</button>'+
+          '</div>'
+        :"")+
+      '</div>';
+    }).join("")+'</div>';
+}
+
+function abrirModalConviteEquipe(){
+  if(!supa||!_empresaId){toast("⚠️","Sem conexão.");return;}
+  const root=document.getElementById("modal-root");
+  const chks=MODULOS_SISTEMA.map(m=>
+    `<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;cursor:pointer;border-radius:6px;hover:background:var(--bg3)">
+      <input type="checkbox" class="perm-chk" value="${m.id}" style="width:15px;height:15px" checked>
+      <span style="font-size:12px">${m.ic} ${m.label}</span>
+    </label>`
+  ).join("");
+
+  root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)closeModal()">
+    <div class="mo" style="max-width:560px">
+      <div class="moh"><div class="mot">👷 Convidar Funcionário</div><div class="mox" onclick="closeModal()">✕</div></div>
+      <div class="mob" style="max-height:75vh;overflow-y:auto">
+        <div class="g g2" style="margin-bottom:14px">
+          <div class="fg"><label class="lbl">Nome completo *</label>
+            <input class="inp" id="eq-nome" placeholder="Ex: Carlos Ferreira"></div>
+          <div class="fg"><label class="lbl">Email *</label>
+            <input class="inp" id="eq-email" type="email" placeholder="email@empresa.com"></div>
+          <div class="fg"><label class="lbl">Cargo / Função</label>
+            <input class="inp" id="eq-cargo" placeholder="Ex: Encarregado, Técnico..."></div>
+          <div class="fg"><label class="lbl">Perfil de acesso base</label>
+            <select class="sel" id="eq-papel" onchange="eqAplicarPreset(this.value)">
+              <option value="operacional">Operacional</option>
+              <option value="gestor">Gestor</option>
+              <option value="financeiro">Financeiro</option>
+              <option value="visualizador">Visualizador</option>
+              <option value="admin">Administrador</option>
+            </select></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <label class="lbl" style="margin:0">Módulos com acesso</label>
+          <div style="display:flex;gap:6px">
+            <button class="btn sm" onclick="eqSelecionarTodos(true)">Todos</button>
+            <button class="btn sm" onclick="eqSelecionarTodos(false)">Nenhum</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--bg3);border-radius:8px;padding:8px;margin-bottom:14px">
+          ${chks}
+        </div>
+      </div>
+      <div class="mof">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn pri" onclick="enviarConviteEquipe()">✉️ Enviar Convite</button>
+      </div>
+    </div></div>`;
+  // Aplicar preset inicial
+  eqAplicarPreset("operacional");
+}
+
+function eqAplicarPreset(papel){
+  const preset=PAPEIS_PRESET[papel]||[];
+  document.querySelectorAll(".perm-chk").forEach(chk=>{
+    chk.checked=preset.includes(chk.value);
+  });
+}
+
+function eqSelecionarTodos(sel){
+  document.querySelectorAll(".perm-chk").forEach(chk=>chk.checked=sel);
+}
+
+async function enviarConviteEquipe(){
+  const nome=document.getElementById("eq-nome")?.value.trim();
+  const email=document.getElementById("eq-email")?.value.trim().toLowerCase();
+  const cargo=document.getElementById("eq-cargo")?.value.trim();
+  const papel=document.getElementById("eq-papel")?.value||"operacional";
+  const permissoes=[...document.querySelectorAll(".perm-chk:checked")].map(c=>c.value);
+
+  if(!nome){toast("⚠️","Informe o nome.");return;}
+  if(!email||!email.includes("@")){toast("⚠️","Email inválido.");return;}
+  if(!permissoes.length){toast("⚠️","Selecione ao menos um módulo.");return;}
+
+  const btnEnviar=document.querySelector(".mof .btn.pri");
+  if(btnEnviar){btnEnviar.disabled=true;btnEnviar.textContent="Enviando...";}
+
+  try{
+    // Gerar senha provisória
+    const palavras=["Obra","Torre","Vila","Casa","Bloco","Piso","Muro","Viga"];
+    const palavra=palavras[Math.floor(Math.random()*palavras.length)];
+    const num=Math.floor(100+Math.random()*900);
+    const senha=palavra+num+"!";
+
+    // Criar usuário no Auth
+    const {data:authData,error:authError}=await supa.auth.admin
+      ?await supa.auth.admin.createUser({email,password:senha,email_confirm:true,user_metadata:{nome,papel,empresa_id:_empresaId}})
+      :await supa.auth.signUp({email,password:senha,options:{data:{nome,papel,empresa_id:_empresaId}}});
+
+    // Se signUp (não admin), pegar o userId
+    let userId=authData?.user?.id;
+
+    if(!userId){
+      // Tentar buscar se já existe
+      const {data:existing}=await supa.from("perfis").select("id").eq("empresa_id",_empresaId).ilike("id","*");
+      toast("⚠️","Não foi possível criar o usuário. Tente pelo Supabase Dashboard.");
+      if(btnEnviar){btnEnviar.disabled=false;btnEnviar.textContent="✉️ Enviar Convite";}
+      return;
+    }
+
+    // Criar perfil com permissões
+    const permJson=JSON.stringify(permissoes);
+    await supa.from("perfis").upsert({
+      id:userId,empresa_id:_empresaId,
+      nome,cargo,papel,permissoes:permJson,email
+    },{onConflict:"id"});
+
+    closeModal();
+
+    // Mostrar credenciais para copiar
+    const rootC=document.getElementById("modal-root");
+    rootC.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)closeModal()">
+      <div class="mo" style="max-width:440px">
+        <div class="moh"><div class="mot">✅ Funcionário Cadastrado!</div><div class="mox" onclick="closeModal()">✕</div></div>
+        <div class="mob">
+          <p style="font-size:13px;color:var(--txt);margin-bottom:14px">Acesso criado para <strong>${nome}</strong>. Envie as credenciais abaixo:</p>
+          <div style="background:var(--bg3);border-radius:8px;padding:14px;font-size:12px;line-height:1.8;border:1px solid var(--border)">
+            <div>🌐 <strong>Site:</strong> obratech.eng.br</div>
+            <div>📧 <strong>Email:</strong> ${email}</div>
+            <div>🔑 <strong>Senha provisória:</strong> <strong style="color:var(--primary);font-size:14px">${senha}</strong></div>
+            <div style="margin-top:6px;font-size:11px;color:var(--txt3)">⚠️ Peça para trocar a senha no primeiro acesso.</div>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:var(--txt3)">
+            Módulos liberados: ${permissoes.map(p=>MODULOS_SISTEMA.find(m=>m.id===p)?.label||p).join(", ")}
+          </div>
+        </div>
+        <div class="mof">
+          <button class="btn pri" onclick="navigator.clipboard.writeText('Site: obratech.eng.br\nEmail: ${email}\nSenha: ${senha}');toast('✅','Copiado!');closeModal()">📋 Copiar Credenciais</button>
+          <button class="btn" onclick="closeModal()">Fechar</button>
+        </div>
+      </div></div>`;
+
+    // Recarregar lista
+    await carregarEquipeUsuarios();
+    toast("✅","Funcionário cadastrado! Compartilhe as credenciais.");
+  }catch(err){
+    console.error("Erro convite equipe:",err);
+    toast("❌","Erro: "+err.message?.substring(0,60));
+    if(btnEnviar){btnEnviar.disabled=false;btnEnviar.textContent="✉️ Enviar Convite";}
+  }
+}
+
+async function abrirEditarPermissoes(userId){
+  const u=DB.equipeUsuarios?.find(x=>x.id===userId);
+  if(!u)return;
+  const permAtivas=u.permissoes?JSON.parse(u.permissoes):(PAPEIS_PRESET[u.papel]||[]);
+  const root=document.getElementById("modal-root");
+  const chks=MODULOS_SISTEMA.map(m=>
+    `<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;cursor:pointer;border-radius:6px">
+      <input type="checkbox" class="perm-edit-chk" value="${m.id}" style="width:15px;height:15px" ${permAtivas.includes(m.id)?"checked":""}>
+      <span style="font-size:12px">${m.ic} ${m.label}</span>
+    </label>`
+  ).join("");
+
+  root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)closeModal()">
+    <div class="mo" style="max-width:480px">
+      <div class="moh"><div class="mot">⚙️ Permissões — ${u.nome}</div><div class="mox" onclick="closeModal()">✕</div></div>
+      <div class="mob">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div>
+            <select class="sel" id="perm-papel-sel" style="width:180px" onchange="eqAplicarPresetEdit(this.value)">
+              <option value="">— Aplicar preset —</option>
+              <option value="admin">Administrador</option>
+              <option value="gestor">Gestor</option>
+              <option value="financeiro">Financeiro</option>
+              <option value="operacional">Operacional</option>
+              <option value="visualizador">Visualizador</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn sm" onclick="document.querySelectorAll('.perm-edit-chk').forEach(c=>c.checked=true)">Todos</button>
+            <button class="btn sm" onclick="document.querySelectorAll('.perm-edit-chk').forEach(c=>c.checked=false)">Nenhum</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--bg3);border-radius:8px;padding:8px">
+          ${chks}
+        </div>
+      </div>
+      <div class="mof">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn pri" onclick="salvarPermissoes('${userId}')">✅ Salvar Permissões</button>
+      </div>
+    </div></div>`;
+}
+
+function eqAplicarPresetEdit(papel){
+  if(!papel)return;
+  const preset=PAPEIS_PRESET[papel]||[];
+  document.querySelectorAll(".perm-edit-chk").forEach(chk=>{
+    chk.checked=preset.includes(chk.value);
+  });
+}
+
+async function salvarPermissoes(userId){
+  const permissoes=[...document.querySelectorAll(".perm-edit-chk:checked")].map(c=>c.value);
+  const permJson=JSON.stringify(permissoes);
+  const {error}=await supa.from("perfis").update({permissoes:permJson}).eq("id",userId).eq("empresa_id",_empresaId);
+  if(error){toast("❌","Erro ao salvar.");return;}
+  const u=DB.equipeUsuarios?.find(x=>x.id===userId);
+  if(u) u.permissoes=permJson;
+  closeModal();
+  renderEquipeUsuarios(DB.equipeUsuarios);
+  toast("✅","Permissões atualizadas!");
+}
+
+async function removerAcessoUsuario(userId,nome){
+  if(!confirm("Remover acesso de "+nome+"? O usuário não conseguirá mais entrar no sistema."))return;
+  await supa.from("perfis").update({empresa_id:null}).eq("id",userId);
+  DB.equipeUsuarios=DB.equipeUsuarios?.filter(u=>u.id!==userId)||[];
+  renderEquipeUsuarios(DB.equipeUsuarios);
+  toast("✅",nome+" removido do sistema.");
+}
+
+// Aplicar restrições de acesso baseadas nas permissões do usuário logado
+function aplicarRestricoesPerfil(permissoes){
+  if(!permissoes||!Array.isArray(permissoes))return;
+  // Esconder itens do sidebar que não têm permissão
+  document.querySelectorAll(".ni[data-p]").forEach(el=>{
+    const pg=el.dataset.p;
+    if(pg&&!permissoes.includes(pg)){
+      el.style.display="none";
+    }
+  });
+  // Se a página atual não tem permissão, redirecionar para o primeiro disponível
+  const atual=window._paginaAtual||"dashboard";
+  if(!permissoes.includes(atual)){
+    const primeira=permissoes[0]||"dashboard";
+    goPage(primeira);
+  }
+}
 
 async function renderClientes(){
   if(!supa||!_empresaId) return;
