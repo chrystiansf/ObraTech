@@ -1619,6 +1619,11 @@ async function iniciarSessao(session){
       } else {
         mostrarApp();
         renderDash(); fillSelects(); renderObras();
+        // Aplicar permissões do cache imediatamente
+        const cachedPerms=localStorage.getItem('_ot_permissoes');
+        if(cachedPerms){
+          try{ setTimeout(()=>aplicarRestricoesPerfil(JSON.parse(cachedPerms)),100); }catch(e){}
+        }
         toast('👋','Bem-vindo, '+cachedNome.split(' ')[0]+'!');
         carregarDadosSupabase().then(()=>{
           renderDash();renderObras();
@@ -1626,7 +1631,7 @@ async function iniciarSessao(session){
         });
       }
       
-      // Atualizar perfil em background (sem bloquear)
+      // Atualizar perfil em background (busca permissoes atualizadas)
       _atualizarPerfilBackground(session.user.id);
       return;
     }
@@ -1650,8 +1655,11 @@ async function iniciarSessao(session){
       if(perfil.permissoes){
         try{
           const perms=JSON.parse(perfil.permissoes);
+          localStorage.setItem('_ot_permissoes', perfil.permissoes);
           setTimeout(()=>aplicarRestricoesPerfil(perms),200);
         }catch(e){}
+      } else {
+        localStorage.removeItem('_ot_permissoes');
       }
 
       // Salvar no cache local para próximos logins serem instantâneos
@@ -1738,11 +1746,25 @@ function _atualizarSidebar(nome, papel){
 
 async function _atualizarPerfilBackground(userId){
   try{
-    const {data:perfil}=await supa.from('perfis').select('id,nome,papel,cargo,empresa_id').eq('id',userId).maybeSingle();
+    const {data:perfil}=await supa.from('perfis')
+      .select('id,nome,papel,cargo,empresa_id,permissoes,obras_ids')
+      .eq('id',userId).maybeSingle();
     if(perfil){
       localStorage.setItem('_ot_empresa_id', perfil.empresa_id);
       localStorage.setItem('_ot_papel', perfil.papel);
       localStorage.setItem('_ot_nome', perfil.nome);
+      // Salvar permissoes no cache local
+      if(perfil.permissoes) localStorage.setItem('_ot_permissoes', perfil.permissoes);
+      else localStorage.removeItem('_ot_permissoes');
+      if(perfil.obras_ids) localStorage.setItem('_ot_obras_ids', perfil.obras_ids);
+      else localStorage.removeItem('_ot_obras_ids');
+      // Aplicar restrições imediatamente
+      if(perfil.permissoes){
+        try{
+          const perms=JSON.parse(perfil.permissoes);
+          aplicarRestricoesPerfil(perms);
+        }catch(e){}
+      }
       // Se papel mudou, recarregar
       if(perfil.papel!==_papelAtual){
         console.log('Papel mudou, recarregando...');
@@ -2513,20 +2535,29 @@ async function removerAcessoUsuario(userId,nome){
 // Aplicar restrições de acesso baseadas nas permissões do usuário logado
 function aplicarRestricoesPerfil(permissoes){
   if(!permissoes||!Array.isArray(permissoes))return;
-  // Esconder itens do sidebar que não têm permissão
+  // Guardar permissões globalmente para bloquear goPage
+  window._permsAtivas=permissoes;
+
+  // Esconder sidebar desktop
   document.querySelectorAll(".ni[data-p]").forEach(el=>{
     const pg=el.dataset.p;
-    if(pg&&!permissoes.includes(pg)){
-      el.style.display="none";
-    }
+    if(pg) el.style.display=permissoes.includes(pg)?"":"none";
   });
-  // Se a página atual não tem permissão, redirecionar para o primeiro disponível
+
+  // Esconder nav mobile
+  document.querySelectorAll(".mni[data-p],.mni-more-item[onclick]").forEach(el=>{
+    const pg=el.dataset?.p||el.getAttribute("onclick")?.match(/goPage\('([^']+)'\)/)?.[1];
+    if(pg) el.style.display=permissoes.includes(pg)?"":"none";
+  });
+
+  // Redirecionar se página atual não tem permissão
   const atual=window._paginaAtual||"dashboard";
   if(!permissoes.includes(atual)){
-    const primeira=permissoes[0]||"dashboard";
-    goPage(primeira);
+    goPage(permissoes[0]||"dashboard");
   }
 }
+
+// Bloqueio de goPage feito dentro da própria função
 
 async function renderClientes(){
   if(!supa||!_empresaId) return;
@@ -2979,6 +3010,11 @@ const TITLES={dashboard:'Dashboard',obras:'Obras',cronograma:'Cronograma',rdo:'R
 const NEW_ACTIONS={obras:()=>openMocModal(),cronograma:()=>openModal('etapa'),rdo:null,equipe:()=>openModal('colab'),estoque:()=>{estSwTab('catalogo');openModal('material');},financeiro:()=>openModal('lanc'),qualidade:()=>openModal('nc'),contratos:()=>openModal('contrato')};
 
 function goPage(id){
+  // Bloquear se usuário não tem permissão para este módulo
+  if(window._permsAtivas&&!window._permsAtivas.includes(id)){
+    toast("⚠️","Sem acesso a este módulo.");
+    return;
+  }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
   document.querySelectorAll('.mni').forEach(n=>n.classList.remove('on'));
