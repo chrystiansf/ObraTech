@@ -2359,35 +2359,54 @@ function atualizarPreviewHeader(){
 }
 
 function extrairCoresLogo(url){
-  const img=new Image();
+  var img=new Image();
   img.crossOrigin='anonymous';
   img.onload=function(){
-    const canvas=document.createElement('canvas');
-    const ctx=canvas.getContext('2d');
-    const size=50;
+    var canvas=document.createElement('canvas');
+    var ctx=canvas.getContext('2d');
+    var size=80;
     canvas.width=size;canvas.height=size;
     ctx.drawImage(img,0,0,size,size);
-    const data=ctx.getImageData(0,0,size,size).data;
-    const cores={};
-    for(let i=0;i<data.length;i+=4){
-      const r=data[i],g=data[i+1],b=data[i+2],a=data[i+3];
+    var data=ctx.getImageData(0,0,size,size).data;
+    var cores={};
+    for(var i=0;i<data.length;i+=4){
+      var r=data[i],g=data[i+1],b=data[i+2],a=data[i+3];
       if(a<128) continue;
-      // Ignorar quase-branco e quase-transparente
-      if(r>235&&g>235&&b>235) continue;
-      // Quantizar para reduzir variacao
-      const qr=Math.round(r/32)*32,qg=Math.round(g/32)*32,qb=Math.round(b/32)*32;
-      const key=qr+','+qg+','+qb;
-      cores[key]=(cores[key]||0)+1;
+      // Ignorar quase-branco (fundo claro)
+      if(r>230&&g>230&&b>230) continue;
+      // Ignorar quase-preto (fundo escuro)
+      if(r<30&&g<30&&b<30) continue;
+      // Ignorar cinza puro (sem saturacao)
+      var mx=Math.max(r,g,b),mn=Math.min(r,g,b);
+      var sat=(mx===0)?0:(mx-mn)/mx;
+      // Quantizar com passo menor para preservar tons
+      var qr=Math.round(r/24)*24,qg=Math.round(g/24)*24,qb=Math.round(b/24)*24;
+      var key=qr+','+qg+','+qb;
+      // Dar peso extra para cores saturadas (coloridas)
+      var peso=sat>0.2?(1+sat*3):1;
+      cores[key]=(cores[key]||0)+peso;
     }
-    // Ordenar por frequencia
-    const sorted=Object.entries(cores).sort((a,b)=>b[1]-a[1]).slice(0,5);
-    const hexCores=sorted.map(function(e){
-      const p=e[0].split(',');
+    // Ordenar por peso (frequencia x saturacao)
+    var sorted=Object.entries(cores).sort(function(a,b){return b[1]-a[1];}).slice(0,6);
+    var hexCores=sorted.map(function(e){
+      var p=e[0].split(',');
       return '#'+[p[0],p[1],p[2]].map(function(c){return ('0'+parseInt(c).toString(16)).slice(-2);}).join('');
     });
-    // Sempre incluir preto
-    if(hexCores.indexOf('#000000')===-1) hexCores.push('#000000');
-    renderCoresExtraidas(hexCores);
+    // Remover duplicatas visuais muito proximas
+    var filtered=[hexCores[0]];
+    for(var j=1;j<hexCores.length;j++){
+      var dup=false;
+      var c1=hexToRgb(hexCores[j]);
+      for(var k=0;k<filtered.length;k++){
+        var c2=hexToRgb(filtered[k]);
+        var dist=Math.abs(c1[0]-c2[0])+Math.abs(c1[1]-c2[1])+Math.abs(c1[2]-c2[2]);
+        if(dist<60){dup=true;break;}
+      }
+      if(!dup) filtered.push(hexCores[j]);
+    }
+    // Sempre incluir preto como opcao
+    if(filtered.indexOf('#000000')===-1) filtered.push('#000000');
+    renderCoresExtraidas(filtered.slice(0,6));
   };
   img.onerror=function(){renderCoresExtraidas(['#0A193C','#000000']);};
   img.src=url;
