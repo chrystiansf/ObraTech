@@ -7543,8 +7543,8 @@ function hStyle(_c) {
     fillColor: PX.navy,
     textColor: [255, 255, 255],
     fontStyle: 'bold',
-    fontSize: 8.5,
-    cellPadding: { top: 3, bottom: 3, left: 5, right: 5 }
+    fontSize: 8,
+    cellPadding: { top: 2.2, bottom: 2.2, left: 4, right: 4 }
   };
 }
 // ── bStyle: corpo de tabela — texto preto, padding compacto
@@ -7627,16 +7627,16 @@ function gerarRDOPDF(rdo) {
     if (y + need > 275) { doc.addPage(); y = pHdr(doc, 'Relatorio Diario de Obra', (obra?.nome||'-') + '  -  ' + fmtDt(rdo.data)) + 6; }
   };
 
-  // Helper: presenca didParseCell com cores
+  // Helper: presenca didParseCell com cores + maiuscula em labels
   const presStyle = function(data) {
     if (data.section === 'body') {
       const lastCol = data.table.columns.length - 1;
       if (data.column.index === lastCol) {
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.halign = 'center';
-        if (data.cell.raw === 'Presente') data.cell.styles.textColor = [22, 130, 60];
-        else if (data.cell.raw === 'Falta') data.cell.styles.textColor = [200, 30, 30];
-        else if (data.cell.raw === 'Meia Diaria') data.cell.styles.textColor = [180, 90, 0];
+        if (data.cell.raw === 'PRESENTE') data.cell.styles.textColor = [22, 130, 60];
+        else if (data.cell.raw === 'FALTA') data.cell.styles.textColor = [200, 30, 30];
+        else if (data.cell.raw === 'MEIA DIARIA') data.cell.styles.textColor = [180, 90, 0];
       }
       if (data.row.index % 2 === 0) data.cell.styles.fillColor = [250, 251, 253];
     }
@@ -7658,7 +7658,7 @@ function gerarRDOPDF(rdo) {
   doc.text(statusTxt, M + stW / 2, y + 4, { align: 'center' });
   // Data de emissao ao lado
   doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...PX.gray);
-  doc.text('Emissao: ' + new Date().toLocaleDateString('pt-BR'), M + stW + 5, y + 4);
+  doc.text('EMISSAO: ' + new Date().toLocaleDateString('pt-BR'), M + stW + 5, y + 4);
   y += 10;
 
   // ═══════════════════════════════════════════════════════════════
@@ -7690,17 +7690,17 @@ function gerarRDOPDF(rdo) {
   // ═══════════════════════════════════════════════════════════════
   y = pSec(doc, y, 'Execucao do Dia');
   const execData = [
-    ['Servicos Executados', rdo.serv || 'Nao informado.'],
-    ['Ocorrencias / Observacoes', rdo.obs || 'Nenhuma ocorrencia.'],
-    ['Materiais Recebidos', rdo.mat || 'Sem recebimentos.']
+    ['SERVICOS EXECUTADOS', rdo.serv || 'Nao informado.'],
+    ['OCORRENCIAS / OBS', rdo.obs || 'Nenhuma ocorrencia.'],
+    ['MATERIAIS RECEBIDOS', rdo.mat || 'Sem recebimentos.']
   ];
   doc.autoTable({
     startY: y,
-    head: [['Campo', 'Descricao']],
+    head: [['CAMPO', 'DESCRICAO']],
     body: execData,
     theme: 'plain',
-    headStyles: { ...hStyle(), cellPadding: { top: 3.5, bottom: 3.5, left: 6, right: 6 } },
-    bodyStyles: { ...bStyle(), minCellHeight: 12, valign: 'top', cellPadding: { top: 4, bottom: 4, left: 6, right: 6 } },
+    headStyles: hStyle(),
+    bodyStyles: { ...bStyle(), minCellHeight: 10, valign: 'top' },
     columnStyles: {
       0: { cellWidth: 48, fontStyle: 'bold', fillColor: [240, 242, 246], textColor: PX.gray },
       1: { fillColor: [255, 255, 255] }
@@ -7724,26 +7724,26 @@ function gerarRDOPDF(rdo) {
   const presColabRows = [];
   colabsOrdenados.forEach(col => {
     const pt = DB.pontos.find(p => String(p.colabId) === String(col.id) && p.data === rdo.data && p.presente);
-    let status = 'Falta';
-    if (pt && pt.tipo === 'meia_diaria') status = 'Meia Diaria';
-    else if (pt) status = 'Presente';
-    presColabRows.push([col.nome, col.funcao || '-', status]);
+    let status = 'FALTA';
+    if (pt && pt.tipo === 'meia_diaria') status = 'MEIA DIARIA';
+    else if (pt) status = 'PRESENTE';
+    presColabRows.push([(col.nome||'').toUpperCase(), (col.funcao||'-').toUpperCase(), status]);
   });
   if (presColabRows.length) {
     checkPage(20 + presColabRows.length * 7);
     y = pSec(doc, y, 'Lista de Presenca - Mao de Obra Civil (' + presColabRows.length + ')');
     doc.autoTable({
       startY: y,
-      head: [['No.', 'Nome', 'Funcao / Cargo', 'Presenca']],
+      head: [['N', 'NOME', 'FUNCAO / CARGO', 'PRESENCA']],
       body: presColabRows.map((r, i) => [i + 1, ...r]),
       theme: 'plain',
       headStyles: hStyle(),
       bodyStyles: { ...bStyle(), lineColor: [235, 237, 240], lineWidth: 0.15 },
       columnStyles: {
-        0: { cellWidth: 12, halign: 'center', textColor: PX.gray, fontStyle: 'bold' },
+        0: { cellWidth: 10, halign: 'center', textColor: PX.gray },
         1: { cellWidth: 65, fontStyle: 'bold' },
         2: { textColor: PX.gray },
-        3: { cellWidth: 28, halign: 'center' }
+        3: { cellWidth: 30, halign: 'center' }
       },
       margin: { left: M, right: M },
       didParseCell: presStyle
@@ -7758,25 +7758,25 @@ function gerarRDOPDF(rdo) {
   const presTercRows = [];
   tercsOrdenados.forEach(t => {
     const pt = (DB.pontosTercs || []).find(p => p.tercId === t.id && p.data === rdo.data);
-    const status = pt && pt.presente ? 'Presente' : 'Falta';
-    presTercRows.push([t.nome, t.funcao || '-', t.empresa || '-', status]);
+    const status = pt && pt.presente ? 'PRESENTE' : 'FALTA';
+    presTercRows.push([(t.nome||'').toUpperCase(), (t.funcao||'-').toUpperCase(), (t.empresa||'-').toUpperCase(), status]);
   });
   if (presTercRows.length) {
     checkPage(20 + presTercRows.length * 7);
     y = pSec(doc, y, 'Lista de Presenca - Terceirizados (' + presTercRows.length + ')');
     doc.autoTable({
       startY: y,
-      head: [['No.', 'Nome', 'Funcao', 'Empresa', 'Presenca']],
+      head: [['N', 'NOME', 'FUNCAO', 'EMPRESA', 'PRESENCA']],
       body: presTercRows.map((r, i) => [i + 1, ...r]),
       theme: 'plain',
       headStyles: hStyle(),
       bodyStyles: { ...bStyle(), lineColor: [235, 237, 240], lineWidth: 0.15 },
       columnStyles: {
-        0: { cellWidth: 12, halign: 'center', textColor: PX.gray, fontStyle: 'bold' },
+        0: { cellWidth: 10, halign: 'center', textColor: PX.gray },
         1: { cellWidth: 50, fontStyle: 'bold' },
         2: { cellWidth: 35, textColor: PX.gray },
         3: { cellWidth: 40, textColor: PX.blue, fontStyle: 'bold' },
-        4: { cellWidth: 28, halign: 'center' }
+        4: { cellWidth: 30, halign: 'center' }
       },
       margin: { left: M, right: M },
       didParseCell: presStyle
@@ -7840,7 +7840,7 @@ function gerarRDOPDF(rdo) {
     doc.setDrawColor(...PX.silver); doc.setLineWidth(0.3);
     doc.line(bx + 5, by + bh - 6, bx + bw - 5, by + bh - 6);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(5.5); doc.setTextColor(...PX.lgray);
-    doc.text('Assinatura', bx + bw / 2, by + bh - 2, { align: 'center' });
+    doc.text('ASSINATURA', bx + bw / 2, by + bh - 2, { align: 'center' });
   };
   drawSigBox(M, y, sigW, sigH, 'RESPONSAVEL TECNICO', obra?.resp || '-');
   drawSigBox(M + sigW + 4, y, sigW, sigH, 'LOCAL E DATA', (obra?.local || '-') + ',  ' + fmtDt(rdo.data));
