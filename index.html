@@ -1176,6 +1176,7 @@ nav{padding:4px 0;flex:1}
   <div style="display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border)">
     <div class="usr-tab on" data-ut="clientes" onclick="usrTab('clientes')" style="padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--primary);color:var(--primary)">👤 Portal Clientes</div>
     <div class="usr-tab" data-ut="equipe" onclick="usrTab('equipe')" style="padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--txt3)">👷 Equipe / Usuários</div>
+    <div class="usr-tab" data-ut="empresa" onclick="usrTab('empresa')" style="padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--txt3)">🏢 Minha Empresa</div>
   </div>
 
   <!-- Painel Clientes -->
@@ -1199,6 +1200,44 @@ nav{padding:4px 0;flex:1}
       </div>
       <div id="equipe-usuarios-lista" style="margin-top:12px">
         <div class="t-empty">Carregando usuários...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Painel Empresa / Branding -->
+  <div id="usr-panel-empresa" style="display:none">
+    <div class="card">
+      <div class="ch">
+        <div><div class="ct">🏢 Identidade Visual da Empresa</div><div class="cs">Personalize a logomarca e a cor dos seus relatorios PDF</div></div>
+      </div>
+      <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <!-- Coluna esquerda: Logo -->
+        <div>
+          <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:var(--txt)">Logomarca</div>
+          <div id="empresa-logo-preview" style="width:180px;height:100px;border:2px dashed var(--border2);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--bg2);margin-bottom:10px;cursor:pointer" onclick="document.getElementById('empresa-logo-input').click()">
+            <span id="empresa-logo-placeholder" style="font-size:11px;color:var(--txt3);text-align:center;padding:8px">Clique para enviar<br>sua logo</span>
+          </div>
+          <input type="file" id="empresa-logo-input" accept="image/*" style="display:none" onchange="uploadLogoEmpresa(event)">
+          <button class="btn sm" onclick="document.getElementById('empresa-logo-input').click()">Alterar Logo</button>
+          <button class="btn sm" onclick="removerLogoEmpresa()" style="margin-left:6px;color:var(--red)">Remover</button>
+        </div>
+        <!-- Coluna direita: Cor -->
+        <div>
+          <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:var(--txt)">Cor Principal dos Relatorios</div>
+          <div style="font-size:11px;color:var(--txt3);margin-bottom:12px">Cores extraidas automaticamente da sua logo. Escolha a cor principal para os cabecalhos e destaques dos PDFs.</div>
+          <div id="empresa-cores-extraidas" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+            <span style="font-size:11px;color:var(--txt3)">Ou escolha manualmente:</span>
+            <input type="color" id="empresa-cor-manual" value="#0A193C" onchange="selecionarCorEmpresa(this.value)" style="width:36px;height:28px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:1px">
+          </div>
+          <div style="margin-top:14px;padding:12px;border-radius:8px;border:1px solid var(--border)" id="empresa-preview-header">
+            <div style="font-size:10px;color:var(--txt3);margin-bottom:6px">PREVIEW DO CABECALHO:</div>
+            <div id="empresa-preview-bar" style="height:28px;border-radius:5px;display:flex;align-items:center;padding:0 12px">
+              <span style="color:#fff;font-weight:700;font-size:11px">SUA EMPRESA</span>
+              <span style="color:rgba(255,255,255,.7);font-size:9px;margin-left:auto">RELATORIO DIARIO DE OBRA</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1358,6 +1397,8 @@ let supa = null;
 let _usuarioAtual = null;
 let _empresaId = null;
 let _papelAtual = null;
+let _empresaLogo = null; // URL da logo da empresa (Supabase Storage)
+let _empresaCor = '#0A193C'; // cor primaria dos relatorios (hex)
 
 // Inicializar Supabase
 function initSupabase(){
@@ -1743,6 +1784,9 @@ async function iniciarSessao(session){
       localStorage.setItem('_ot_user_id', perfil.id);
 
       _atualizarSidebar(perfil.nome, perfil.papel);
+
+      // Carregar branding da empresa (logo + cor)
+      _carregarBrandingEmpresa();
 
       if(perfil.papel==='cliente'){
         mostrarApp();
@@ -2265,7 +2309,149 @@ function usrTab(tab){
   });
   document.getElementById("usr-panel-clientes").style.display=tab==="clientes"?"block":"none";
   document.getElementById("usr-panel-equipe").style.display=tab==="equipe"?"block":"none";
+  const empPanel=document.getElementById("usr-panel-empresa");
+  if(empPanel) empPanel.style.display=tab==="empresa"?"block":"none";
   if(tab==="equipe") carregarEquipeUsuarios();
+  if(tab==="empresa") renderBrandingEmpresa();
+}
+
+// ── Branding da Empresa (logo + cor dos relatorios) ──────────
+
+async function _carregarBrandingEmpresa(){
+  if(!supa||!_empresaId) return;
+  try{
+    const {data}=await supa.from('empresas').select('logo_url,cor_primaria').eq('id',_empresaId).maybeSingle();
+    if(data){
+      if(data.logo_url) _empresaLogo=data.logo_url;
+      if(data.cor_primaria) _empresaCor=data.cor_primaria;
+      localStorage.setItem('_ot_logo',_empresaLogo||'');
+      localStorage.setItem('_ot_cor',_empresaCor);
+    }
+  }catch(e){
+    // Fallback: cache local
+    _empresaLogo=localStorage.getItem('_ot_logo')||null;
+    _empresaCor=localStorage.getItem('_ot_cor')||'#0A193C';
+  }
+}
+
+function renderBrandingEmpresa(){
+  // Preview da logo
+  const prev=document.getElementById('empresa-logo-preview');
+  const ph=document.getElementById('empresa-logo-placeholder');
+  if(prev&&_empresaLogo){
+    prev.innerHTML='<img src="'+_empresaLogo+'" style="max-width:100%;max-height:100%;object-fit:contain">';
+  } else if(prev&&ph){
+    prev.innerHTML='<span id="empresa-logo-placeholder" style="font-size:11px;color:var(--txt3);text-align:center;padding:8px">Clique para enviar<br>sua logo</span>';
+  }
+  // Cor manual
+  const corInput=document.getElementById('empresa-cor-manual');
+  if(corInput) corInput.value=_empresaCor;
+  // Preview do header
+  atualizarPreviewHeader();
+  // Extrair cores se tiver logo
+  if(_empresaLogo) extrairCoresLogo(_empresaLogo);
+  else renderCoresExtraidas(['#0A193C','#1A3A6C','#4A4A4A','#000000']);
+}
+
+function atualizarPreviewHeader(){
+  const bar=document.getElementById('empresa-preview-bar');
+  if(bar) bar.style.background=_empresaCor;
+}
+
+function extrairCoresLogo(url){
+  const img=new Image();
+  img.crossOrigin='anonymous';
+  img.onload=function(){
+    const canvas=document.createElement('canvas');
+    const ctx=canvas.getContext('2d');
+    const size=50;
+    canvas.width=size;canvas.height=size;
+    ctx.drawImage(img,0,0,size,size);
+    const data=ctx.getImageData(0,0,size,size).data;
+    const cores={};
+    for(let i=0;i<data.length;i+=4){
+      const r=data[i],g=data[i+1],b=data[i+2],a=data[i+3];
+      if(a<128) continue;
+      // Ignorar quase-branco e quase-transparente
+      if(r>235&&g>235&&b>235) continue;
+      // Quantizar para reduzir variacao
+      const qr=Math.round(r/32)*32,qg=Math.round(g/32)*32,qb=Math.round(b/32)*32;
+      const key=qr+','+qg+','+qb;
+      cores[key]=(cores[key]||0)+1;
+    }
+    // Ordenar por frequencia
+    const sorted=Object.entries(cores).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const hexCores=sorted.map(function(e){
+      const p=e[0].split(',');
+      return '#'+[p[0],p[1],p[2]].map(function(c){return ('0'+parseInt(c).toString(16)).slice(-2);}).join('');
+    });
+    // Sempre incluir preto
+    if(hexCores.indexOf('#000000')===-1) hexCores.push('#000000');
+    renderCoresExtraidas(hexCores);
+  };
+  img.onerror=function(){renderCoresExtraidas(['#0A193C','#000000']);};
+  img.src=url;
+}
+
+function renderCoresExtraidas(cores){
+  const el=document.getElementById('empresa-cores-extraidas');
+  if(!el) return;
+  el.innerHTML=cores.map(function(c){
+    const sel=c.toLowerCase()===_empresaCor.toLowerCase();
+    return '<div onclick="selecionarCorEmpresa(\''+c+'\')" style="width:40px;height:40px;border-radius:8px;cursor:pointer;background:'+c+';border:3px solid '+(sel?'var(--primary)':'var(--border)')+';display:flex;align-items:center;justify-content:center;transition:border .2s">'+(sel?'<span style="color:#fff;font-size:14px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.5)">&#10003;</span>':'')+'</div>';
+  }).join('');
+}
+
+async function selecionarCorEmpresa(hex){
+  _empresaCor=hex;
+  localStorage.setItem('_ot_cor',hex);
+  atualizarPreviewHeader();
+  if(_empresaLogo) extrairCoresLogo(_empresaLogo);
+  else renderCoresExtraidas(['#0A193C','#1A3A6C','#4A4A4A','#000000']);
+  const corInput=document.getElementById('empresa-cor-manual');
+  if(corInput) corInput.value=hex;
+  if(supa&&_empresaId){
+    await supa.from('empresas').update({cor_primaria:hex}).eq('id',_empresaId);
+  }
+  toast('🎨','Cor atualizada!');
+}
+
+async function uploadLogoEmpresa(e){
+  const file=e.target.files[0];
+  if(!file) return;
+  if(file.size>2*1024*1024){toast('⚠️','Logo deve ter no maximo 2MB.');return;}
+  toast('⏳','Enviando logo...');
+  try{
+    const ext=file.name.split('.').pop().toLowerCase();
+    const path=_empresaId+'/logo.'+ext;
+    // Remover logo anterior se existir
+    await supa.storage.from('drive-obras').remove([_empresaId+'/logo.png',_empresaId+'/logo.jpg',_empresaId+'/logo.jpeg',_empresaId+'/logo.webp']);
+    const {error:upErr}=await supa.storage.from('drive-obras').upload(path,file,{upsert:true,contentType:file.type});
+    if(upErr) throw upErr;
+    const {data:urlData}=supa.storage.from('drive-obras').getPublicUrl(path);
+    const logoUrl=urlData.publicUrl+'?t='+Date.now();
+    _empresaLogo=logoUrl;
+    localStorage.setItem('_ot_logo',logoUrl);
+    await supa.from('empresas').update({logo_url:logoUrl}).eq('id',_empresaId);
+    renderBrandingEmpresa();
+    toast('✅','Logo atualizada!');
+  }catch(err){
+    console.error('Upload logo:',err);
+    toast('❌','Erro ao enviar logo: '+err.message);
+  }
+  e.target.value='';
+}
+
+async function removerLogoEmpresa(){
+  if(!confirm('Remover a logomarca?')) return;
+  _empresaLogo=null;
+  localStorage.removeItem('_ot_logo');
+  if(supa&&_empresaId){
+    await supa.from('empresas').update({logo_url:null}).eq('id',_empresaId);
+    await supa.storage.from('drive-obras').remove([_empresaId+'/logo.png',_empresaId+'/logo.jpg',_empresaId+'/logo.jpeg',_empresaId+'/logo.webp']);
+  }
+  renderBrandingEmpresa();
+  toast('🗑️','Logo removida.');
 }
 
 async function carregarEquipeUsuarios(){
@@ -7468,8 +7654,16 @@ const {jsPDF}=window.jspdf;
 // PDF DESIGN SYSTEM CORPORATIVO — ObraTech v1
 // Paleta, utilitários de layout e tipografia profissional
 // ═══════════════════════════════════════════════════════════════
+// Helper: hex para RGB array
+function hexToRgb(hex){
+  hex=hex.replace('#','');
+  if(hex.length===3) hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+  return [parseInt(hex.substring(0,2),16),parseInt(hex.substring(2,4),16),parseInt(hex.substring(4,6),16)];
+}
+// Retorna a cor primaria da empresa como RGB array
+function corEmpresa(){return hexToRgb(_empresaCor||'#0A193C');}
+
 const PX = {
-  navy:   [10, 25, 60],
   blue:   [25, 70, 150],
   ink:    [15, 15, 15],
   gray:   [100, 106, 120],
@@ -7481,7 +7675,6 @@ const PX = {
   amber:  [160, 100, 10],
   red:    [160, 30, 30],
   // aliases para compatibilidade
-  dark:   [10, 25, 60],
   cyan:   [25, 70, 150],
   purple: [25, 70, 150],
   light:  [246, 247, 249],
@@ -7489,22 +7682,36 @@ const PX = {
   border: [218, 220, 225],
   pale:   [170, 175, 185],
 };
+// navy e dark sao dinamicos — seguem a cor da empresa
+Object.defineProperty(PX,'navy',{get:function(){return corEmpresa();},enumerable:true});
+Object.defineProperty(PX,'dark',{get:function(){return corEmpresa();},enumerable:true});
 
-// ── Cabeçalho corporativo — azul escuro sólido, tipografia clara
+// ── Cabeçalho corporativo — cor da empresa, logo se disponivel
 function pHdr(doc, title, sub, _accent) {
   title=title||'Relatório'; sub=sub||'';
   const W = doc.internal.pageSize.getWidth();
-  doc.setFillColor(...PX.navy); doc.rect(0, 0, W, 28, 'F');
-  doc.setFillColor(...PX.blue); doc.rect(0, 28, W, 1.2, 'F');
-  // Logo / marca
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-  doc.setTextColor(255, 255, 255); doc.text('OBRATECH', 9, 11);
+  const ce = corEmpresa();
+  // Fundo com cor da empresa
+  doc.setFillColor(...ce); doc.rect(0, 0, W, 28, 'F');
+  // Linha accent (cor mais clara)
+  const accentRgb = [Math.min(ce[0]+30,255), Math.min(ce[1]+50,255), Math.min(ce[2]+100,255)];
+  doc.setFillColor(...accentRgb); doc.rect(0, 28, W, 1.2, 'F');
+  // Logo da empresa ou texto fallback
+  let logoX = 9;
+  if (_empresaLogo) {
+    try { doc.addImage(_empresaLogo, 'PNG', 9, 4, 20, 20, '', 'FAST'); logoX = 33; } catch(e) { logoX = 9; }
+  }
+  if (logoX === 9) {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+    doc.setTextColor(255, 255, 255); doc.text('OBRATECH', 9, 11);
+  }
   doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5);
-  doc.setTextColor(...PX.lgray); doc.text('SISTEMA DE GESTAO DE OBRAS', 9, 17);
+  doc.setTextColor(255, 255, 255, 180);
+  doc.text('SISTEMA DE GESTAO DE OBRAS', logoX, _empresaLogo ? 11 : 17);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(6);
-  doc.setTextColor(...PX.lgray); doc.text('Emitido em ' + new Date().toLocaleDateString('pt-BR'), 9, 23.5);
+  doc.text('Emitido em ' + new Date().toLocaleDateString('pt-BR'), logoX, _empresaLogo ? 17 : 23.5);
   // Separador vertical
-  doc.setDrawColor(...PX.blue); doc.setLineWidth(0.5);
+  doc.setDrawColor(...accentRgb); doc.setLineWidth(0.5);
   doc.line(W * 0.42, 6, W * 0.42, 24);
   // Título
   doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
@@ -7513,7 +7720,7 @@ function pHdr(doc, title, sub, _accent) {
   // Subtítulo
   if (sub) {
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
-    doc.setTextColor(...PX.lgray);
+    doc.setTextColor(255, 255, 255, 180);
     doc.text(String(sub).substring(0, 70), W - 9, 20, { align: 'right' });
   }
   doc.setTextColor(...PX.ink); doc.setLineWidth(0.2);
@@ -7537,10 +7744,10 @@ function pFtr(doc) {
   }
 }
 
-// ── hStyle: cabeçalho de tabela — navy sólido, texto branco
+// ── hStyle: cabeçalho de tabela — cor da empresa, texto branco
 function hStyle(_c) {
   return {
-    fillColor: PX.navy,
+    fillColor: corEmpresa(),
     textColor: [255, 255, 255],
     fontStyle: 'bold',
     fontSize: 8,
@@ -7558,7 +7765,7 @@ function bStyle() {
   };
 }
 function altRow()  { return { fillColor: PX.bg }; }
-function totRow()  { return { fillColor: PX.navy, textColor: [255,255,255], fontStyle: 'bold', fontSize: 7.5 }; }
+function totRow()  { return { fillColor: corEmpresa(), textColor: [255,255,255], fontStyle: 'bold', fontSize: 7.5 }; }
 
 // ── pKpi: card de indicador — borda cinza, topo azul escuro, valores em preto
 function pKpi(doc, x, y, w, h, label, value, sub, _valColor) {
@@ -7567,8 +7774,8 @@ function pKpi(doc, x, y, w, h, label, value, sub, _valColor) {
   doc.rect(x, y, w, h, 'F');
   doc.setDrawColor(...PX.silver); doc.setLineWidth(0.25);
   doc.rect(x, y, w, h, 'S');
-  // topo navy fino
-  doc.setFillColor(...PX.navy); doc.rect(x, y, w, 1.5, 'F');
+  // topo com cor da empresa
+  doc.setFillColor(...corEmpresa()); doc.rect(x, y, w, 1.5, 'F');
   // label
   doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5);
   doc.setTextColor(...PX.gray);
@@ -7589,7 +7796,7 @@ function pKpi(doc, x, y, w, h, label, value, sub, _valColor) {
 // ── pSec: título de seção — linha azul + rótulo caixa alta preto
 function pSec(doc, y, title, _color, pw) {
   const W = pw || 210;
-  doc.setFillColor(...PX.navy); doc.rect(9, y, 3, 8, 'F');
+  doc.setFillColor(...corEmpresa()); doc.rect(9, y, 3, 8, 'F');
   doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
   doc.setTextColor(...PX.ink);
   doc.text(title.toUpperCase(), 15, y + 6);
@@ -8543,7 +8750,7 @@ function exportCustoM2PDF() {
 function exportMovsPDF(){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-  const PX={navy:[10,25,60],blue:[25,70,150],ink:[15,15,15],gray:[100,106,120],lgray:[170,175,185],silver:[218,220,225],bg:[246,247,249],white:[255,255,255],green:[22,101,52],amber:[120,53,15],red:[153,27,27]};
+  const PX={blue:[25,70,150],ink:[15,15,15],gray:[100,106,120],lgray:[170,175,185],silver:[218,220,225],bg:[246,247,249],white:[255,255,255],green:[22,101,52],amber:[120,53,15],red:[153,27,27]};Object.defineProperty(PX,'navy',{get:function(){return corEmpresa();},enumerable:true});
   const W=doc.internal.pageSize.getWidth();
   const H=doc.internal.pageSize.getHeight();
   const ml=14,mr=14,cw=W-ml-mr;
