@@ -1676,18 +1676,19 @@ async function iniciarSessao(session){
       console.log('Cache de outro usuário detectado — limpando e recarregando perfil');
     }
     if(cacheValido){
+      // Restaurar DB do localStorage (preserva foto, ini, dados locais)
+      load();
       _empresaId = cachedEmpresa;
       _papelAtual = cachedPapel;
-      DB.user.nome = cachedNome;
-      DB.user.cargo = localStorage.getItem('_ot_cargo') || cachedPapel;
-      
+      if(!DB.user.nome) DB.user.nome = cachedNome;
+      if(!DB.user.cargo) DB.user.cargo = localStorage.getItem('_ot_cargo') || cachedPapel;
+      // Restaurar branding
+      _empresaLogo = localStorage.getItem('_ot_logo') || null;
+      _empresaCor = localStorage.getItem('_ot_cor') || '#0A193C';
+
       // Mostrar app IMEDIATAMENTE com dados do cache
-      _atualizarSidebar(cachedNome, cachedPapel);
-      // Restaurar foto do cache
-      if(DB.user.foto){
-        const av=document.getElementById('user-av');
-        if(av) av.innerHTML=`<img src="${DB.user.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-      }
+      _atualizarSidebar(DB.user.nome, cachedPapel);
+      _restaurarAvatar();
       if(cachedPapel==='cliente'){
         mostrarApp();
         const unEl=document.getElementById('pc-user-nome');
@@ -1723,8 +1724,9 @@ async function iniciarSessao(session){
         });
       }
       
-      // Atualizar perfil em background (busca permissoes atualizadas)
+      // Atualizar perfil e branding em background
       _atualizarPerfilBackground(session.user.id);
+      _carregarBrandingEmpresa();
       return;
     }
 
@@ -1860,6 +1862,17 @@ async function iniciarSessao(session){
       authMsg('Erro ao carregar perfil: '+e.message,'error');
     }
   }
+}
+
+function _restaurarAvatar(){
+  const av=document.getElementById('user-av');
+  if(!av) return;
+  if(DB.user.foto) av.innerHTML='<img src="'+DB.user.foto+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+  else av.textContent=DB.user.ini||DB.user.nome?.charAt(0)||'?';
+  const nameEl=document.getElementById('user-name');
+  if(nameEl&&DB.user.nome) nameEl.textContent=DB.user.nome;
+  const roleEl=document.getElementById('user-role');
+  if(roleEl) roleEl.textContent=DB.user.cargo||'';
 }
 
 function _atualizarSidebar(nome, papel){
@@ -9615,22 +9628,30 @@ async function initObraTech(){
   const cachedNome = localStorage.getItem('_ot_nome');
 
   if(cachedEmpresa && cachedPapel && cachedNome){
+    // Restaurar DB do localStorage ANTES de tudo (preserva foto, ini, etc)
+    load();
     // Temos cache: mostrar app INSTANTANEAMENTE
     _empresaId = cachedEmpresa;
     _papelAtual = cachedPapel;
-    DB.user.nome = cachedNome;
-    DB.user.cargo = cachedPapel;
-    _atualizarSidebar(cachedNome, cachedPapel);
+    // Preservar foto/ini que vieram do load(), só atualizar nome/cargo se necessario
+    if(!DB.user.nome) DB.user.nome = cachedNome;
+    if(!DB.user.cargo) DB.user.cargo = localStorage.getItem('_ot_cargo') || cachedPapel;
+    // Restaurar branding da empresa (logo + cor)
+    _empresaLogo = localStorage.getItem('_ot_logo') || null;
+    _empresaCor = localStorage.getItem('_ot_cor') || '#0A193C';
+    _atualizarSidebar(DB.user.nome, cachedPapel);
     window._sessaoAtiva = true;
 
     if(cachedPapel==='cliente'){
       mostrarApp();
       const unEl=document.getElementById('pc-user-nome');
-      if(unEl) unEl.textContent=cachedNome;
+      if(unEl) unEl.textContent=DB.user.nome||cachedNome;
     } else {
       mostrarApp();
       renderDash(); fillSelects(); renderObras();
     }
+    // Restaurar avatar (foto do DB.user carregado pelo load())
+    _restaurarAvatar();
 
     // Validar sessão em background — com retry para mobile
     const _validarSessao=async(tentativa=1)=>{
@@ -9664,6 +9685,7 @@ async function initObraTech(){
           adicionarBotaoLogout();
         }
         _atualizarPerfilBackground(session.user.id);
+        _carregarBrandingEmpresa();
       }catch(e){
         console.warn('getSession:',e.message);
         if(tentativa<2) setTimeout(()=>_validarSessao(tentativa+1),1000);
