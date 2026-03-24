@@ -7616,152 +7616,239 @@ function pBar(doc, x, y, w, h, pct, _color) {
 function gerarRDOPDF(rdo) {
   if (!rdo) { toast('⚠️', 'Sem RDO selecionado!'); return; }
   const doc = new jsPDF();
-  const W   = doc.internal.pageSize.getWidth();
+  const W = doc.internal.pageSize.getWidth();
+  const M = 14; // margem lateral padrao
+  const CW = W - M * 2; // largura util
   const obra = DB.obras.find(o => o.id == rdo.obraId);
   const finalizado = rdo.status === 'finalizado';
-  let y = pHdr(doc, 'Relatorio Diario de Obra', (obra?.nome || '—') + '   —   ' + fmtDt(rdo.data));
-  y += 3;
 
-  // ── Linha de status
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
-  if (finalizado) doc.setTextColor(30,120,60); else doc.setTextColor(160,100,10);
-  doc.text((finalizado ? 'FINALIZADO' : 'RASCUNHO') + '  |  Emissao: ' + new Date().toLocaleDateString('pt-BR'), 9, y + 4);
-  doc.setDrawColor(...PX.silver); doc.setLineWidth(0.3); doc.line(9, y + 7, W - 9, y + 7);
-  y += 12;
+  // Helper: checar paginacao
+  const checkPage = (need, hdrTitle) => {
+    if (y + need > 275) { doc.addPage(); y = pHdr(doc, 'Relatorio Diario de Obra', (obra?.nome||'-') + '  -  ' + fmtDt(rdo.data)) + 6; }
+  };
 
-  // ── 3 KPIs: Obra, Data, Clima
-  const cw = 61, ch = 27, gap = 2;
-  pKpi(doc, 9,                   y, cw, ch, 'Obra',    (obra?.nome||'—').substring(0,22), obra?.local||'—');
-  pKpi(doc, 9+(cw+gap),          y, cw, ch, 'Data',    fmtDt(rdo.data), '');
-  pKpi(doc, 9+2*(cw+gap),        y, cw, ch, 'Clima',   rdo.clima||'—', '');
-  y += ch + 8;
+  // Helper: presenca didParseCell com cores
+  const presStyle = function(data) {
+    if (data.section === 'body') {
+      const lastCol = data.table.columns.length - 1;
+      if (data.column.index === lastCol) {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.halign = 'center';
+        if (data.cell.raw === 'Presente') data.cell.styles.textColor = [22, 130, 60];
+        else if (data.cell.raw === 'Falta') data.cell.styles.textColor = [200, 30, 30];
+        else if (data.cell.raw === 'Meia Diaria') data.cell.styles.textColor = [180, 90, 0];
+      }
+      if (data.row.index % 2 === 0) data.cell.styles.fillColor = [250, 251, 253];
+    }
+  };
 
-  // ── Execução do dia
+  // ═══════════════════════════════════════════════════════════════
+  // HEADER
+  // ═══════════════════════════════════════════════════════════════
+  let y = pHdr(doc, 'Relatorio Diario de Obra', (obra?.nome || '-') + '  -  ' + fmtDt(rdo.data));
+  y += 2;
+
+  // ── Badge de status
+  const statusTxt = finalizado ? 'FINALIZADO' : 'RASCUNHO';
+  const statusColor = finalizado ? [22, 130, 60] : [180, 90, 0];
+  doc.setFillColor(...statusColor);
+  const stW = doc.getTextWidth(statusTxt) * 0.36 + 12;
+  doc.roundedRect(M, y, stW, 5.5, 1.5, 1.5, 'F');
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(255, 255, 255);
+  doc.text(statusTxt, M + stW / 2, y + 4, { align: 'center' });
+  // Data de emissao ao lado
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...PX.gray);
+  doc.text('Emissao: ' + new Date().toLocaleDateString('pt-BR'), M + stW + 5, y + 4);
+  y += 10;
+
+  // ═══════════════════════════════════════════════════════════════
+  // DADOS GERAIS — grid 2x2
+  // ═══════════════════════════════════════════════════════════════
+  const drawInfoBox = (bx, by, bw, bh, label, value) => {
+    doc.setFillColor(250, 251, 253); doc.rect(bx, by, bw, bh, 'F');
+    doc.setDrawColor(...PX.silver); doc.setLineWidth(0.2); doc.rect(bx, by, bw, bh, 'S');
+    doc.setFillColor(...PX.navy); doc.rect(bx, by, bw, 1.2, 'F');
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.setTextColor(...PX.gray);
+    doc.text(label.toUpperCase(), bx + 5, by + 7);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...PX.ink);
+    doc.text(String(value).substring(0, 35), bx + 5, by + 14.5);
+  };
+  const bw1 = CW * 0.5 - 1.5, bw2 = CW * 0.25 - 1, bw3 = CW * 0.25 - 0.5;
+  const bh = 19;
+  drawInfoBox(M, y, bw1, bh, 'Obra', obra?.nome || '-');
+  drawInfoBox(M + bw1 + 3, y, bw2, bh, 'Data', fmtDt(rdo.data));
+  drawInfoBox(M + bw1 + bw2 + 6, y, bw3, bh, 'Clima', rdo.clima || '-');
+  y += bh + 3;
+  // Segunda linha: Local + Responsavel
+  const bwHalf = CW * 0.5 - 1.5;
+  drawInfoBox(M, y, bwHalf, bh, 'Localizacao', obra?.local || '-');
+  drawInfoBox(M + bwHalf + 3, y, bwHalf, bh, 'Responsavel Tecnico', obra?.resp || '-');
+  y += bh + 8;
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXECUCAO DO DIA
+  // ═══════════════════════════════════════════════════════════════
   y = pSec(doc, y, 'Execucao do Dia');
-  // Terceirizados presentes
-  const tercsPresentes=(DB.pontosTercs||[]).filter(p=>p.data===rdo.data&&(!rdo.obraId||p.obraId===rdo.obraId)&&p.presente);
-  const tercsNomes=tercsPresentes.map(p=>{const t=DB.terceirizados.find(x=>x.id===p.tercId);return t?t.nome+(t.funcao?' ('+t.funcao+')':''):'?';}).join(', ');
+  const execData = [
+    ['Servicos Executados', rdo.serv || 'Nao informado.'],
+    ['Ocorrencias / Observacoes', rdo.obs || 'Nenhuma ocorrencia.'],
+    ['Materiais Recebidos', rdo.mat || 'Sem recebimentos.']
+  ];
   doc.autoTable({
     startY: y,
-    head: [['Campo', 'Informacao']],
-    body: [
-      ['Servicos Executados',     rdo.serv || 'Nao informado.'],
-      ['Ocorrencias / Observacoes', rdo.obs || 'Nenhuma ocorrencia.'],
-      ['Materiais Recebidos',     rdo.mat  || 'Sem recebimentos.'],
-      ['Responsavel Tecnico',     obra?.resp || '—'],
-    ],
+    head: [['Campo', 'Descricao']],
+    body: execData,
     theme: 'plain',
-    headStyles: hStyle(),
-    bodyStyles: { ...bStyle(), minCellHeight: 11, valign: 'top' },
+    headStyles: { ...hStyle(), cellPadding: { top: 3.5, bottom: 3.5, left: 6, right: 6 } },
+    bodyStyles: { ...bStyle(), minCellHeight: 12, valign: 'top', cellPadding: { top: 4, bottom: 4, left: 6, right: 6 } },
     columnStyles: {
-      0: { cellWidth: 50, fontStyle: 'bold', fillColor: PX.bg, textColor: PX.gray },
-      1: { cellWidth: 142 }
+      0: { cellWidth: 48, fontStyle: 'bold', fillColor: [240, 242, 246], textColor: PX.gray },
+      1: { fillColor: [255, 255, 255] }
     },
-    margin: { left: 9, right: 9 }
+    margin: { left: M, right: M },
+    didParseCell: function(data) {
+      if (data.section === 'body' && data.column.index === 1 && data.cell.raw && data.cell.raw.indexOf('Nao informado') === -1 && data.cell.raw.indexOf('Nenhuma') === -1 && data.cell.raw.indexOf('Sem ') === -1) {
+        data.cell.styles.textColor = PX.ink;
+      } else if (data.section === 'body' && data.column.index === 1) {
+        data.cell.styles.textColor = PX.lgray;
+        data.cell.styles.fontStyle = 'italic';
+      }
+    }
   });
   y = doc.lastAutoTable.finalY + 8;
 
-  // ── Presenca do Dia (Colaboradores + Terceirizados)
+  // ═══════════════════════════════════════════════════════════════
+  // LISTA DE PRESENCA — MAO DE OBRA CIVIL
+  // ═══════════════════════════════════════════════════════════════
+  const colabsOrdenados = [...DB.colabs].sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
   const presColabRows = [];
-  // Colaboradores proprios (todos, sem filtro de obra — sao globais)
-  const colabsOrdenados = [...DB.colabs].sort((a,b) => (a.nome||'').localeCompare(b.nome||''));
   colabsOrdenados.forEach(col => {
     const pt = DB.pontos.find(p => String(p.colabId) === String(col.id) && p.data === rdo.data && p.presente);
     let status = 'Falta';
     if (pt && pt.tipo === 'meia_diaria') status = 'Meia Diaria';
     else if (pt) status = 'Presente';
-    presColabRows.push([col.nome, col.funcao || '-', 'Proprio', status]);
+    presColabRows.push([col.nome, col.funcao || '-', status]);
   });
-  // Terceirizados agrupados por empresa
-  const presTercRows = [];
-  const tercsOrdenados = [...DB.terceirizados].sort((a,b) => (a.empresa||'').localeCompare(b.empresa||'') || (a.nome||'').localeCompare(b.nome||''));
-  tercsOrdenados.forEach(t => {
-    const pt = (DB.pontosTercs || []).find(p => p.tercId === t.id && p.data === rdo.data);
-    const status = pt && pt.presente ? 'Presente' : 'Falta';
-    presTercRows.push([t.nome, t.funcao || '-', t.empresa || 'Terceirizado', status]);
-  });
-  const presRows = [...presColabRows, ...presTercRows];
-  if (presRows.length) {
-    if (y > 240) { doc.addPage(); y = pHdr(doc, 'RDO — Presenca', obra?.nome || '-') + 8; }
-    y = pSec(doc, y, 'Presenca do Dia  (' + presRows.length + ' profissiona' + (presRows.length > 1 ? 'is' : 'l') + ')');
+  if (presColabRows.length) {
+    checkPage(20 + presColabRows.length * 7);
+    y = pSec(doc, y, 'Lista de Presenca - Mao de Obra Civil (' + presColabRows.length + ')');
     doc.autoTable({
       startY: y,
-      head: [['Nome', 'Funcao', 'Vinculo', 'Presenca']],
-      body: presRows,
-      theme: 'striped',
-      headStyles: hStyle(),
-      bodyStyles: bStyle(),
+      head: [['#', 'Nome', 'Funcao / Cargo', 'Presenca']],
+      body: presColabRows.map((r, i) => [i + 1, ...r]),
+      theme: 'plain',
+      headStyles: { ...hStyle(), cellPadding: { top: 3.5, bottom: 3.5, left: 5, right: 5 } },
+      bodyStyles: { ...bStyle(), lineColor: [235, 237, 240], lineWidth: 0.15 },
       columnStyles: {
-        0: { cellWidth: 55, fontStyle: 'bold' },
-        1: { cellWidth: 40 },
-        2: { cellWidth: 40 },
-        3: { cellWidth: 30, halign: 'center', fontStyle: 'bold' }
+        0: { cellWidth: 10, halign: 'center', textColor: PX.gray, fontStyle: 'bold' },
+        1: { cellWidth: 65, fontStyle: 'bold' },
+        2: { textColor: PX.gray },
+        3: { cellWidth: 28, halign: 'center' }
       },
-      margin: { left: 9, right: 9 },
-      didParseCell: function(data) {
-        if (data.section === 'body' && data.column.index === 3) {
-          if (data.cell.raw === 'Presente') data.cell.styles.textColor = [22, 163, 74];
-          else if (data.cell.raw === 'Falta') data.cell.styles.textColor = [220, 38, 38];
-          else if (data.cell.raw === 'Meia Diaria') data.cell.styles.textColor = [217, 119, 6];
-        }
-      }
+      margin: { left: M, right: M },
+      didParseCell: presStyle
     });
     y = doc.lastAutoTable.finalY + 8;
   }
 
-  // ── Fotos
+  // ═══════════════════════════════════════════════════════════════
+  // LISTA DE PRESENCA — TERCEIRIZADOS
+  // ═══════════════════════════════════════════════════════════════
+  const tercsOrdenados = [...DB.terceirizados].sort((a, b) => (a.empresa || '').localeCompare(b.empresa || '') || (a.nome || '').localeCompare(b.nome || ''));
+  const presTercRows = [];
+  tercsOrdenados.forEach(t => {
+    const pt = (DB.pontosTercs || []).find(p => p.tercId === t.id && p.data === rdo.data);
+    const status = pt && pt.presente ? 'Presente' : 'Falta';
+    presTercRows.push([t.nome, t.funcao || '-', t.empresa || '-', status]);
+  });
+  if (presTercRows.length) {
+    checkPage(20 + presTercRows.length * 7);
+    y = pSec(doc, y, 'Lista de Presenca - Terceirizados (' + presTercRows.length + ')');
+    doc.autoTable({
+      startY: y,
+      head: [['#', 'Nome', 'Funcao', 'Empresa', 'Presenca']],
+      body: presTercRows.map((r, i) => [i + 1, ...r]),
+      theme: 'plain',
+      headStyles: { ...hStyle(), cellPadding: { top: 3.5, bottom: 3.5, left: 5, right: 5 } },
+      bodyStyles: { ...bStyle(), lineColor: [235, 237, 240], lineWidth: 0.15 },
+      columnStyles: {
+        0: { cellWidth: 10, halign: 'center', textColor: PX.gray, fontStyle: 'bold' },
+        1: { cellWidth: 50, fontStyle: 'bold' },
+        2: { cellWidth: 35, textColor: PX.gray },
+        3: { cellWidth: 40, textColor: PX.blue, fontStyle: 'bold' },
+        4: { cellWidth: 28, halign: 'center' }
+      },
+      margin: { left: M, right: M },
+      didParseCell: presStyle
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // REGISTRO FOTOGRAFICO
+  // ═══════════════════════════════════════════════════════════════
   if (rdo.fotos && rdo.fotos.length) {
-    if (y > 205) { doc.addPage(); y = pHdr(doc, 'RDO — Registro Fotografico', obra?.nome||'—') + 8; }
-    y = pSec(doc, y, 'Registro Fotografico  (' + rdo.fotos.length + ' foto' + (rdo.fotos.length > 1 ? 's' : '') + ')');
-    const cols = 3, imgW = 58, imgH = 43, gap2 = 3;
+    checkPage(60);
+    y = pSec(doc, y, 'Registro Fotografico (' + rdo.fotos.length + ' foto' + (rdo.fotos.length > 1 ? 's' : '') + ')');
+    const cols = 3, imgW = (CW - 6) / 3, imgH = 44, gapF = 3;
     let photoY = y;
     rdo.fotos.forEach((foto, i) => {
       if (!foto.data) return;
       const col = i % cols;
-      if (col === 0 && i > 0) photoY += imgH + 10;
-      if (photoY + imgH > 270) {
-        doc.addPage(); photoY = pHdr(doc, 'RDO — Fotos (cont.)', obra?.nome||'—') + 8;
+      if (col === 0 && i > 0) photoY += imgH + 12;
+      if (photoY + imgH > 268) {
+        doc.addPage(); photoY = pHdr(doc, 'Relatorio Diario de Obra', (obra?.nome||'-') + '  -  ' + fmtDt(rdo.data)) + 8;
       }
-      const x = 9 + col * (imgW + gap2);
-      doc.setDrawColor(...PX.silver); doc.setLineWidth(0.3); doc.rect(x, photoY, imgW, imgH, 'S');
-      try { doc.addImage(foto.data, 'JPEG', x, photoY, imgW, imgH, '', 'FAST'); }
+      const x = M + col * (imgW + gapF);
+      // Sombra sutil
+      doc.setFillColor(230, 232, 236); doc.rect(x + 0.5, photoY + 0.5, imgW, imgH, 'F');
+      // Container branco
+      doc.setFillColor(255, 255, 255); doc.rect(x, photoY, imgW, imgH, 'F');
+      doc.setDrawColor(...PX.silver); doc.setLineWidth(0.2); doc.rect(x, photoY, imgW, imgH, 'S');
+      try { doc.addImage(foto.data, 'JPEG', x + 0.8, photoY + 0.8, imgW - 1.6, imgH - 1.6, '', 'FAST'); }
       catch (e) {
         doc.setFontSize(7); doc.setTextColor(...PX.gray);
-        doc.text('[Foto '+(i+1)+']', x+imgW/2, photoY+imgH/2, { align:'center' });
+        doc.text('[Foto ' + (i + 1) + ']', x + imgW / 2, photoY + imgH / 2, { align: 'center' });
       }
-      doc.setFillColor(...PX.navy); doc.rect(x, photoY, 14, 6.5, 'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(5.5); doc.setTextColor(255,255,255);
-      doc.text('#'+String(i+1).padStart(2,'0'), x+7, photoY+4.8, { align:'center' });
-      doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(...PX.gray);
-      const fLabel=(foto.desc||foto.name||'Foto '+(i+1)).substring(0,30);
-      doc.text(fLabel, x+imgW/2, photoY+imgH+5, { align:'center' });
+      // Badge numero
+      doc.setFillColor(...PX.navy); doc.roundedRect(x + 2, photoY + 2, 11, 5, 1, 1, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(5.5); doc.setTextColor(255, 255, 255);
+      doc.text('#' + String(i + 1).padStart(2, '0'), x + 7.5, photoY + 5.5, { align: 'center' });
+      // Legenda
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...PX.ink);
+      const fLabel = (foto.desc || foto.name || 'Foto ' + (i + 1)).substring(0, 32);
+      doc.text(fLabel, x + imgW / 2, photoY + imgH + 5, { align: 'center' });
     });
     y = photoY + imgH + 12;
   }
 
-  // ── Assinatura
-  if (y > 254) { doc.addPage(); y = pHdr(doc, 'RDO — Assinatura', obra?.nome||'—') + 12; }
+  // ═══════════════════════════════════════════════════════════════
+  // ATESTO E ASSINATURA
+  // ═══════════════════════════════════════════════════════════════
+  checkPage(40);
   y = pSec(doc, y, 'Atesto e Assinatura');
+  const sigW = (CW - 4) / 2, sigH = 30;
   const drawSigBox = (bx, by, bw, bh, titulo, conteudo) => {
-    doc.setFillColor(...PX.bg); doc.rect(bx, by, bw, bh, 'F');
-    doc.setDrawColor(...PX.silver); doc.setLineWidth(0.3); doc.rect(bx, by, bw, bh, 'S');
+    doc.setFillColor(250, 251, 253); doc.rect(bx, by, bw, bh, 'F');
+    doc.setDrawColor(...PX.silver); doc.setLineWidth(0.2); doc.rect(bx, by, bw, bh, 'S');
     doc.setFillColor(...PX.navy); doc.rect(bx, by, bw, 5.5, 'F');
-    doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(255,255,255);
-    doc.text(titulo, bx+4, by+4.2);
-    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...PX.ink);
-    doc.text(conteudo, bx+4, by+14);
-    doc.setDrawColor(...PX.lgray); doc.setLineWidth(0.4);
-    doc.line(bx+4, by+bh-4, bx+bw-4, by+bh-4);
-    doc.setFont('helvetica','normal'); doc.setFontSize(6); doc.setTextColor(...PX.lgray);
-    doc.text('Assinatura', bx+4, by+bh-1);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(255, 255, 255);
+    doc.text(titulo, bx + 5, by + 4);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...PX.ink);
+    doc.text(conteudo, bx + 5, by + 14);
+    // Linha de assinatura
+    doc.setDrawColor(...PX.silver); doc.setLineWidth(0.3);
+    doc.line(bx + 5, by + bh - 6, bx + bw - 5, by + bh - 6);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(5.5); doc.setTextColor(...PX.lgray);
+    doc.text('Assinatura', bx + bw / 2, by + bh - 2, { align: 'center' });
   };
-  drawSigBox(9,   y, 93, 28, 'RESPONSAVEL TECNICO', obra?.resp||'—');
-  drawSigBox(106, y, 95, 28, 'LOCAL E DATA', (obra?.local||'—') + ',  ' + fmtDt(rdo.data));
+  drawSigBox(M, y, sigW, sigH, 'RESPONSAVEL TECNICO', obra?.resp || '-');
+  drawSigBox(M + sigW + 4, y, sigW, sigH, 'LOCAL E DATA', (obra?.local || '-') + ',  ' + fmtDt(rdo.data));
   doc.setLineWidth(0.2);
 
   pFtr(doc);
-  doc.save('RDO_' + (obra?.nome||'obra').replace(/\s/g,'_') + '_' + rdo.data + '.pdf');
-  toast('📄', 'RDO exportado (' + (rdo.fotos?.length||0) + ' foto(s))!');
+  doc.save('RDO_' + (obra?.nome || 'obra').replace(/\s/g, '_') + '_' + rdo.data + '.pdf');
+  toast('📄', 'RDO exportado (' + (rdo.fotos?.length || 0) + ' foto(s))!');
 }
 // ─────────────────────────────────────────────────────────────────
 // 2. CRONOGRAMA / GANTT
