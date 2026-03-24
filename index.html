@@ -3942,9 +3942,10 @@ function renderTerceirizados(){
     return;
   }
   el.innerHTML=`<table class="tbl">
-    <tr><th>Nome</th><th>Função</th><th>CPF</th><th>Telefone</th><th></th></tr>
+    <tr><th>Nome</th><th>Empresa</th><th>Função</th><th>CPF</th><th>Telefone</th><th></th></tr>
     ${DB.terceirizados.map(t=>`<tr>
       <td style="font-weight:600">${t.nome}</td>
+      <td style="color:var(--primary);font-weight:600;font-size:11px">${t.empresa||'—'}</td>
       <td style="color:var(--txt3)">${t.funcao||'—'}</td>
       <td style="font-size:11px">${t.cpf||'—'}</td>
       <td style="font-size:11px">${t.celular||'—'}</td>
@@ -7614,7 +7615,7 @@ function gerarRDOPDF(rdo) {
   // ── Linha de status
   doc.setFont('helvetica', 'bold'); doc.setFontSize(7);
   if (finalizado) doc.setTextColor(30,120,60); else doc.setTextColor(160,100,10);
-  doc.text((finalizado ? '■ FINALIZADO' : '◌ RASCUNHO') + '     Emissao: ' + new Date().toLocaleDateString('pt-BR'), 9, y + 4);
+  doc.text((finalizado ? 'FINALIZADO' : 'RASCUNHO') + '  |  Emissao: ' + new Date().toLocaleDateString('pt-BR'), 9, y + 4);
   doc.setDrawColor(...PX.silver); doc.setLineWidth(0.3); doc.line(9, y + 7, W - 9, y + 7);
   y += 12;
 
@@ -7649,6 +7650,51 @@ function gerarRDOPDF(rdo) {
     margin: { left: 9, right: 9 }
   });
   y = doc.lastAutoTable.finalY + 8;
+
+  // ── Presenca do Dia (Colaboradores + Terceirizados)
+  const presRows = [];
+  // Colaboradores proprios
+  const colabsObra = DB.colabs.filter(c => !rdo.obraId || c.obraId === rdo.obraId);
+  colabsObra.forEach(col => {
+    const pt = DB.pontos.find(p => String(p.colabId) === String(col.id) && p.data === rdo.data);
+    let status = 'Falta';
+    if (pt && pt.tipo === 'M') status = 'Meia Diaria';
+    else if (pt && (pt.tipo === 'P' || pt.presente)) status = 'Presente';
+    presRows.push([col.nome, col.funcao || '-', 'Proprio', status]);
+  });
+  // Terceirizados
+  DB.terceirizados.forEach(t => {
+    const pt = (DB.pontosTercs || []).find(p => p.tercId === t.id && p.data === rdo.data);
+    const status = pt && pt.presente ? 'Presente' : 'Falta';
+    presRows.push([t.nome, t.funcao || '-', t.empresa || 'Terceirizado', status]);
+  });
+  if (presRows.length) {
+    if (y > 240) { doc.addPage(); y = pHdr(doc, 'RDO — Presenca', obra?.nome || '-') + 8; }
+    y = pSec(doc, y, 'Presenca do Dia  (' + presRows.length + ' profissiona' + (presRows.length > 1 ? 'is' : 'l') + ')');
+    doc.autoTable({
+      startY: y,
+      head: [['Nome', 'Funcao', 'Vinculo', 'Presenca']],
+      body: presRows,
+      theme: 'striped',
+      headStyles: hStyle(),
+      bodyStyles: bStyle(),
+      columnStyles: {
+        0: { cellWidth: 55, fontStyle: 'bold' },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 40 },
+        3: { cellWidth: 30, halign: 'center', fontStyle: 'bold' }
+      },
+      margin: { left: 9, right: 9 },
+      didParseCell: function(data) {
+        if (data.section === 'body' && data.column.index === 3) {
+          if (data.cell.raw === 'Presente') data.cell.styles.textColor = [22, 163, 74];
+          else if (data.cell.raw === 'Falta') data.cell.styles.textColor = [220, 38, 38];
+          else if (data.cell.raw === 'Meia Diaria') data.cell.styles.textColor = [217, 119, 6];
+        }
+      }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+  }
 
   // ── Fotos
   if (rdo.fotos && rdo.fotos.length) {
