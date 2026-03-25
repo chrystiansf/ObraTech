@@ -393,10 +393,28 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
   #fin-topbar{flex-wrap:wrap;gap:6px}
   #fin-topbar .sel,#fin-topbar .inp{width:100%;max-width:100%}
   .fin-fchip{font-size:10px}
+  /* Financeiro KPIs mobile — evitar sobreposição */
+  #fin-kpis{display:grid !important;grid-template-columns:1fr 1fr !important;gap:8px !important}
+  #fin-kpis .kpi{min-width:0 !important;width:100% !important}
+
+  /* Cards expansiveis mobile */
+  .mov-card,.dem-card{padding:12px !important}
+  .mov-card>div:first-child,.dem-card>div:first-child{flex-wrap:wrap;gap:8px !important}
 
   /* RDO mobile — garantir scroll */
   #p-rdo{overflow-y:auto !important}
   #rdo-hist{margin-top:12px}
+
+  /* Abas internas (usr-tab, sub-tabs) — scroll horizontal no mobile */
+  [style*="display:flex"][style*="border-bottom"]{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap !important}
+
+  /* Evitar sobreposicao geral de KPIs */
+  .g.g4{grid-template-columns:1fr 1fr !important}
+  .g.g3{grid-template-columns:1fr !important}
+
+  /* Inputs e selects dentro de modais — full width */
+  .mo .g2{grid-template-columns:1fr !important}
+  .mo .fg[style*="grid-column:span 2"]{grid-column:span 1 !important}
 
   /* Tabelas em cards no mobile */
   .tbl th,.tbl td{padding:6px 5px;font-size:11px}
@@ -613,14 +631,15 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
     <div class="mni" onclick="toggleMobileMore()"><div class="mni-ic">⋯</div><div class="mni-lb">Mais</div></div>
   </div>
   <div class="mni-more-panel" id="mni-more-panel">
-    <div class="mni-more-item" onclick="goPage('cronograma');closeMobileMore()"><div class="ic">📅</div><div class="lb">Cronograma</div></div>
-    <div class="mni-more-item" onclick="goPage('estoque');closeMobileMore()"><div class="ic">📦</div><div class="lb">Estoque</div></div>
-    <div class="mni-more-item" onclick="goPage('drive');closeMobileMore()"><div class="ic">📁</div><div class="lb">Drive</div></div>
-    <div class="mni-more-item" onclick="goPage('qualidade');closeMobileMore()"><div class="ic">✅</div><div class="lb">Qualidade</div></div>
-    <div class="mni-more-item" onclick="goPage('contratos');closeMobileMore()"><div class="ic">📑</div><div class="lb">Contratos</div></div>
-    <div class="mni-more-item" onclick="goPage('demandas');closeMobileMore()"><div class="ic">📋</div><div class="lb">Demandas</div></div>
-    <div class="mni-more-item" onclick="goPage('fornecedores');closeMobileMore()"><div class="ic">🏭</div><div class="lb">Fornecedores</div></div>
-    <div class="mni-more-item" onclick="goPage('relatorios');closeMobileMore()"><div class="ic">📈</div><div class="lb">Relatórios</div></div>
+    <div class="mni-more-item" data-p="empresa" onclick="goPage('empresa');closeMobileMore()"><div class="ic">🏢</div><div class="lb">Empresa</div></div>
+    <div class="mni-more-item" data-p="cronograma" onclick="goPage('cronograma');closeMobileMore()"><div class="ic">📅</div><div class="lb">Cronograma</div></div>
+    <div class="mni-more-item" data-p="estoque" onclick="goPage('estoque');closeMobileMore()"><div class="ic">📦</div><div class="lb">Estoque</div></div>
+    <div class="mni-more-item" data-p="drive" onclick="goPage('drive');closeMobileMore()"><div class="ic">📁</div><div class="lb">Drive</div></div>
+    <div class="mni-more-item" data-p="qualidade" onclick="goPage('qualidade');closeMobileMore()"><div class="ic">✅</div><div class="lb">Qualidade</div></div>
+    <div class="mni-more-item" data-p="contratos" onclick="goPage('contratos');closeMobileMore()"><div class="ic">📑</div><div class="lb">Contratos</div></div>
+    <div class="mni-more-item" data-p="demandas" onclick="goPage('demandas');closeMobileMore()"><div class="ic">📋</div><div class="lb">Demandas</div></div>
+    <div class="mni-more-item" data-p="fornecedores" onclick="goPage('fornecedores');closeMobileMore()"><div class="ic">🏭</div><div class="lb">Fornecedores</div></div>
+    <div class="mni-more-item" data-p="relatorios" onclick="goPage('relatorios');closeMobileMore()"><div class="ic">📈</div><div class="lb">Relatórios</div></div>
     <div class="mni-more-item" onclick="closeMobileMore();logout()" style="color:var(--red)"><div class="ic">🚪</div><div class="lb" style="color:var(--red)">Sair</div></div>
   </div>
 </div>
@@ -1443,6 +1462,13 @@ async function fazerLogin(){
     const {data,error} = await supa.auth.signInWithPassword({email,password:senha});
     if(error) throw error;
     authMsg('Bem-vindo!','success');
+    // Iniciar sessão diretamente para evitar depender apenas do listener
+    if(data.session && !window._sessaoAtiva){
+      window._sessaoAtiva=true;
+      await iniciarSessao(data.session);
+      iniciarRealtime();
+      adicionarBotaoLogout();
+    }
   } catch(e){
     authMsg(e.message.includes('Invalid')?'Email ou senha incorretos.':e.message,'error');
   }
@@ -1720,6 +1746,7 @@ async function iniciarSessao(session){
         if(cachedPapel==='admin'){
           window._permsAtivas=null;
           window._obrasPermitidas=null;
+          document.querySelectorAll('.ni[data-p],.mni[data-p],.mni-more-item[data-p]').forEach(el=>el.style.display='');
         } else {
           // Carregar obras do cache
           const cachedObras=localStorage.getItem('_ot_obras_ids');
@@ -1752,7 +1779,7 @@ async function iniciarSessao(session){
     document.getElementById('auth-screen').style.display='none';
 
     const perfPromise = supa.from('perfis').select('id,nome,papel,cargo,empresa_id,permissoes,obras_ids,email').eq('id', session.user.id).maybeSingle();
-    const timeoutPromise = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),10000));
+    const timeoutPromise = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),20000));
     const {data:perfil, error:perfErr} = await Promise.race([perfPromise, timeoutPromise]);
 
     if(perfErr) console.warn('Perfil erro:', perfErr?.message);
@@ -1764,11 +1791,13 @@ async function iniciarSessao(session){
       DB.user.cargo = perfil.cargo || perfil.papel;
       // Aplicar restrições de módulos
       if(perfil.papel==='admin'){
-        // Admin: sem restrições
+        // Admin: sem restrições — garantir visibilidade total
         window._permsAtivas=null;
         window._obrasPermitidas=null;
         localStorage.removeItem('_ot_permissoes');
         localStorage.removeItem('_ot_obras_ids');
+        // Restaurar todos os itens de nav (pode ter ficado hidden de sessão anterior)
+        document.querySelectorAll('.ni[data-p],.mni[data-p],.mni-more-item[data-p]').forEach(el=>el.style.display='');
       } else {
         // Carregar filtro de obras
         let obrasIds=null;
@@ -2925,9 +2954,9 @@ function aplicarRestricoesPerfil(permissoes, obrasIds){
     if(pg) el.style.display=permissoes.includes(pg)?"":"none";
   });
 
-  // Esconder nav mobile
-  document.querySelectorAll(".mni[data-p],.mni-more-item[onclick]").forEach(el=>{
-    const pg=el.dataset?.p||el.getAttribute("onclick")?.match(/goPage\('([^']+)'\)/)?.[1];
+  // Esconder nav mobile (bottom bar + painel Mais)
+  document.querySelectorAll(".mni[data-p],.mni-more-item[data-p]").forEach(el=>{
+    const pg=el.dataset.p;
     if(pg) el.style.display=permissoes.includes(pg)?"":"none";
   });
 
