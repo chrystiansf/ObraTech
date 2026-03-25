@@ -236,7 +236,7 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
 @keyframes slideDown{from{transform:translateX(-50%) translateY(0);opacity:1}to{transform:translateX(-50%) translateY(100px);opacity:0}}
 .pwa-mode #sb{padding-top:env(safe-area-inset-top,0)}
 .pwa-mode .main{padding-bottom:env(safe-area-inset-bottom,0)}
-@media(max-width:600px){.pwa-mode .page{padding:10px 8px}.pwa-mode .card{border-radius:8px}}.inp::placeholder{color:var(--txt3)}.ta{resize:vertical;min-height:65px}.sel{cursor:pointer}
+@media(max-width:600px){.pwa-mode .page{padding:10px 8px}.pwa-mode .card{border-radius:8px}}.inp::placeholder{color:var(--txt3)}.ta{resize:vertical;min-height:65px}.sel{cursor:pointer;min-height:36px;text-overflow:ellipsis}
 /* TABLE */
 .tbl{width:100%;border-collapse:collapse}.tbl th{padding:10px 12px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3);text-align:left;border-bottom:2px solid var(--border);font-weight:700;white-space:nowrap}
 .tbl td{padding:11px 12px;font-size:12.5px;border-bottom:1px solid var(--border);color:var(--txt2);vertical-align:middle;transition:background .1s}.tbl tr:last-child td{border-bottom:none}.tbl tr:hover td{background:var(--bg3)}.tbl td.n{color:var(--txt);font-weight:600}
@@ -598,9 +598,9 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
     <div class="ni" data-p="fornecedores" onclick="goPage('fornecedores')"><span class="ic">🏭</span><span class="sb-txt">Fornecedores</span></div>
     <div class="ni" data-p="relatorios" onclick="goPage('relatorios')"><span class="ic">📈</span><span class="sb-txt">Relatorios</span></div>
   </nav>
-  <div class="sbfoot">
-    <div class="av" id="user-av" onclick="openUserModal()" style="overflow:hidden">?</div>
-    <div class="sb-txt"><div style="font-size:11px;font-weight:600" id="user-name">Configurar</div><div style="font-size:9px;color:var(--txt3)" id="user-role">Clique aqui</div></div>
+  <div class="sbfoot" style="flex-direction:column;align-items:center;gap:6px;padding:12px 8px">
+    <div class="av" id="user-av" onclick="openUserModal()" style="overflow:hidden;width:36px;height:36px;font-size:14px">?</div>
+    <div class="sb-txt" style="text-align:center"><div style="font-size:11px;font-weight:600" id="user-name">Configurar</div><div style="font-size:9px;color:var(--txt3)" id="user-role">Clique aqui</div></div>
   </div>
 </div>
 <div id="mobile-nav">
@@ -808,8 +808,8 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
       <div class="ch">
         <div><div class="ct">📅 Lançar Presença</div><div class="cs" style="font-size:10px;color:var(--txt3)">Marque os dias trabalhados de cada colaborador</div></div>
         <div class="ca">
-          <input type="date" class="inp" id="pt-semana" style="height:28px;font-size:11px;width:145px">
-          <select class="sel" style="height:28px;font-size:11px;width:150px" id="pt-obra"></select>
+          <input type="date" class="inp" id="pt-semana" style="height:34px;font-size:12px;width:145px">
+          <select class="sel" style="height:34px;font-size:12px;width:150px" id="pt-obra"></select>
         </div>
       </div>
       <!-- Grade semanal: cada colaborador = 1 linha, cada dia = 1 checkbox -->
@@ -825,7 +825,7 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
     <div class="card">
       <div class="ch">
         <div class="ct">Histórico</div>
-        <select class="sel" style="height:28px;font-size:11px;width:160px" id="pt-filter" onchange="renderPontos()"><option value="">Todos colaboradores</option></select>
+        <select class="sel" style="height:34px;font-size:12px;width:160px" id="pt-filter" onchange="renderPontos()"><option value="">Todos colaboradores</option></select>
       </div>
       <div id="ponto-tbl"></div>
     </div>
@@ -883,7 +883,7 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
       <div class="ch">
         <div class="ct">📦 Catálogo de Materiais <span style="font-size:10px;color:var(--txt3);font-weight:400">— banco de dados global</span></div>
         <div class="ca">
-          <input class="inp" id="est-cat-search" placeholder="🔍 Pesquisar material..." style="height:28px;font-size:11px;width:180px" oninput="renderCatalogo()">
+          <input class="inp" id="est-cat-search" placeholder="🔍 Pesquisar material..." style="height:34px;font-size:12px;width:180px" oninput="renderCatalogo()">
           <button class="btn sm" onclick="exportEstoquePDF()">📄 PDF</button>
           <button class="btn sm" onclick="exportEstoqueXLS()">📊 Excel</button>
           <button class="btn sm pri" onclick="openModal(&apos;material&apos;)">＋ Novo Material</button>
@@ -900,15 +900,15 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
         <div class="ct">🔄 Movimentações de Estoque</div>
         <div class="ca" style="gap:8px">
           <button class="btn sm" onclick="exportMovsPDF()">📄 PDF</button>
-          <select class="sel" id="mov-filtro-obra" style="height:28px;font-size:11px" onchange="renderMovsPanel()">
+          <select class="sel" id="mov-filtro-obra" style="height:34px;font-size:12px" onchange="renderMovsPanel()">
             <option value="">Todas as obras</option>
           </select>
-          <select class="sel" id="mov-filtro-tipo" style="height:28px;font-size:11px" onchange="renderMovsPanel()">
+          <select class="sel" id="mov-filtro-tipo" style="height:34px;font-size:12px" onchange="renderMovsPanel()">
             <option value="">Entrada e Saída</option>
             <option value="Entrada">↑ Entradas</option>
             <option value="Saida">↓ Saídas</option>
           </select>
-          <input class="inp" id="mov-filtro-mat" placeholder="🔍 Material..." style="height:28px;font-size:11px;width:155px" oninput="renderMovsPanel()">
+          <input class="inp" id="mov-filtro-mat" placeholder="🔍 Material..." style="height:34px;font-size:12px;width:155px" oninput="renderMovsPanel()">
         </div>
       </div>
       <div id="mov-panel-tbl"></div>
@@ -936,7 +936,7 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
               <div id="est-obra-items"></div>
             </div>
           </div>
-          <input class="inp" id="est-saldo-search" placeholder="🔍 Material..." style="height:28px;font-size:11px;width:160px" oninput="renderEstoqueSaldo()">
+          <input class="inp" id="est-saldo-search" placeholder="🔍 Material..." style="height:34px;font-size:12px;width:160px" oninput="renderEstoqueSaldo()">
         </div>
       </div>
       <div id="est-saldo-tbl"></div>
@@ -955,11 +955,11 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
     <div class="ch">
       <div class="ct">📑 Contratos</div>
       <div class="ca">
-        <input class="inp" id="cont-search" placeholder="🔍 Buscar..." style="height:28px;font-size:11px;width:150px" oninput="renderContratos()">
-        <select class="sel" id="cont-obra-filter" style="height:28px;font-size:11px;width:160px" onchange="renderContratos()">
+        <input class="inp" id="cont-search" placeholder="🔍 Buscar..." style="height:34px;font-size:12px;width:150px" oninput="renderContratos()">
+        <select class="sel" id="cont-obra-filter" style="height:34px;font-size:12px;width:160px" onchange="renderContratos()">
           <option value="">Todas as obras</option>
         </select>
-        <select class="sel" id="cont-status-filter" style="height:28px;font-size:11px;width:130px" onchange="renderContratos()">
+        <select class="sel" id="cont-status-filter" style="height:34px;font-size:12px;width:130px" onchange="renderContratos()">
           <option value="">Todos status</option>
           <option value="ativo">Em andamento</option>
           <option value="quitado">Quitado</option>
@@ -979,8 +979,8 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
     <div class="ch">
       <div><div class="ct">📐 Boletins de Medição</div><div class="cs">Medições mensais por contrato — aprovação de empreiteiros</div></div>
       <div class="ca">
-        <select class="sel" id="med-obra-filter" style="height:28px;font-size:11px;width:160px" onchange="renderMedicoes()"><option value="">Todas as obras</option></select>
-        <select class="sel" id="med-status-filter" style="height:28px;font-size:11px;width:130px" onchange="renderMedicoes()">
+        <select class="sel" id="med-obra-filter" style="height:34px;font-size:12px;width:160px" onchange="renderMedicoes()"><option value="">Todas as obras</option></select>
+        <select class="sel" id="med-status-filter" style="height:34px;font-size:12px;width:130px" onchange="renderMedicoes()">
           <option value="">Todos status</option>
           <option value="pendente">Pendente</option>
           <option value="aprovado">Aprovado</option>
@@ -1009,7 +1009,7 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
       <div class="card">
         <div class="ch"><div class="ct">💳 Lançamentos</div>
           <div class="ca">
-            <select class="sel" id="fin-obra-rapido" style="height:28px;font-size:11px;width:170px" onchange="finFiltrarObra(this.value)">
+            <select class="sel" id="fin-obra-rapido" style="height:34px;font-size:12px;width:170px" onchange="finFiltrarObra(this.value)">
               <option value="">🏗️ Todas as obras</option>
             </select>
             <button class="btn sm" onclick="finLimparFiltros()" id="fin-limpar-btn" title="Limpar todos os filtros" style="display:none">✕ Limpar</button>
@@ -1122,7 +1122,7 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
       <div class="card">
         <div class="ch"><div class="ct">❌ Não Conformidades</div>
           <div class="ca">
-            <select class="sel" id="qual-obra-filter" style="height:28px;font-size:11px;width:160px" onchange="renderQual()">
+            <select class="sel" id="qual-obra-filter" style="height:34px;font-size:12px;width:160px" onchange="renderQual()">
               <option value="">Todas as obras</option>
             </select>
             <button class="btn sm" onclick="exportQualPDF()">📄 PDF</button>
@@ -1139,8 +1139,8 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
       <div class="ch">
         <div><div class="ct">✅ Checklists de Inspeção</div><div class="cs">Verificação obrigatória antes de liberar cada etapa</div></div>
         <div class="ca">
-          <select class="sel" id="chk-obra-filter" style="height:28px;font-size:11px;width:160px" onchange="renderChecklist()"><option value="">Todas as obras</option></select>
-          <select class="sel" id="chk-status-filter" style="height:28px;font-size:11px;width:130px" onchange="renderChecklist()">
+          <select class="sel" id="chk-obra-filter" style="height:34px;font-size:12px;width:160px" onchange="renderChecklist()"><option value="">Todas as obras</option></select>
+          <select class="sel" id="chk-status-filter" style="height:34px;font-size:12px;width:130px" onchange="renderChecklist()">
             <option value="">Todos</option>
             <option value="pendente">Pendente</option>
             <option value="ok">Conforme</option>
@@ -1165,16 +1165,16 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
         <div class="cs">Tarefas e pendências por obra</div>
       </div>
       <div class="ca" style="gap:8px">
-        <select class="sel" id="dem-obra-filter" style="height:28px;font-size:11px;width:170px" onchange="renderDemandas()">
+        <select class="sel" id="dem-obra-filter" style="height:34px;font-size:12px;width:170px" onchange="renderDemandas()">
           <option value="">Todas as obras</option>
         </select>
-        <select class="sel" id="dem-status-filter" style="height:28px;font-size:11px;width:130px" onchange="renderDemandas()">
+        <select class="sel" id="dem-status-filter" style="height:34px;font-size:12px;width:130px" onchange="renderDemandas()">
           <option value="">Todos status</option>
           <option value="pendente">Pendente</option>
           <option value="andamento">Em andamento</option>
           <option value="concluida">Concluída</option>
         </select>
-        <select class="sel" id="dem-prior-filter" style="height:28px;font-size:11px;width:120px" onchange="renderDemandas()">
+        <select class="sel" id="dem-prior-filter" style="height:34px;font-size:12px;width:120px" onchange="renderDemandas()">
           <option value="">Todas prioridades</option>
           <option value="alta">Alta</option>
           <option value="media">Média</option>
@@ -1270,8 +1270,8 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
         <div class="cs">Cadastro completo de fornecedores</div>
       </div>
       <div class="ca" style="gap:8px">
-        <input class="inp" id="forn-search" placeholder="🔍 Buscar fornecedor..." style="height:28px;font-size:11px;width:200px" oninput="renderFornecedores()">
-        <select class="sel" id="forn-tipo-filter" style="height:28px;font-size:11px;width:130px" onchange="renderFornecedores()">
+        <input class="inp" id="forn-search" placeholder="🔍 Buscar fornecedor..." style="height:34px;font-size:12px;width:200px" oninput="renderFornecedores()">
+        <select class="sel" id="forn-tipo-filter" style="height:34px;font-size:12px;width:130px" onchange="renderFornecedores()">
           <option value="">Todos os tipos</option>
           <option value="Material">Material</option>
           <option value="Serviço">Serviço</option>
@@ -1294,7 +1294,7 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
     <span style="flex:1"></span>
     <!-- Seletor de obra -->
     <span style="font-size:11px;color:var(--txt3)">Obra:</span>
-    <select class="sel" style="height:28px;font-size:11px;width:180px" id="rel-obra-export">
+    <select class="sel" style="height:34px;font-size:12px;width:180px" id="rel-obra-export">
       <option value="">Todas as obras</option>
     </select>
     <button class="btn" onclick="relSelectAll()">Selecionar tudo</button>
@@ -1367,7 +1367,7 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
         <div class="cs">Selecione a obra para visualizar o relatório completo</div>
       </div>
       <div class="ca">
-        <select class="sel" style="height:28px;font-size:11px;width:200px" id="m2-obra-sel" onchange="renderCustoM2()">
+        <select class="sel" style="height:34px;font-size:12px;width:200px" id="m2-obra-sel" onchange="renderCustoM2()">
           <option value="">— Selecione a obra —</option>
         </select>
         <button class="btn sm" onclick="exportCustoM2PDF()">📄 PDF</button>
@@ -2271,8 +2271,8 @@ function adicionarBotaoLogout(){
   if(!sb) return;
   const btn = document.createElement('div');
   btn.id = 'btn-logout';
-  btn.style.cssText='padding:10px 14px;margin:4px 8px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:#888;display:flex;align-items:center;gap:8px;transition:.15s';
-  btn.innerHTML='<span style="font-size:15px">🚪</span>Sair';
+  btn.style.cssText='padding:8px 0;margin:0 auto;border-radius:8px;cursor:pointer;font-size:11px;font-weight:600;color:#888;display:flex;flex-direction:column;align-items:center;gap:3px;transition:.15s;width:100%;justify-content:center';
+  btn.innerHTML='<span style="font-size:15px">🚪</span><span class="sb-txt" style="font-size:10px">Sair</span>';
   btn.onmouseover=()=>btn.style.background='rgba(255,255,255,.08)';
   btn.onmouseout=()=>btn.style.background='transparent';
   btn.onclick=logout;
@@ -3825,31 +3825,40 @@ function renderMovsPanel(){
   if(!movs.length){el.innerHTML='<div class="t-empty">Nenhuma movimentação encontrada para os filtros selecionados.</div>';return;}
   const totEnt=movs.filter(m=>m.tipo==='Entrada').reduce((a,m)=>a+Number(m.qtd),0);
   const totSai=movs.filter(m=>m.tipo==='Saida').reduce((a,m)=>a+Number(m.qtd),0);
-  const rows=movs.map(m=>{
+  const cards=movs.map(m=>{
     const est=DB.estoque.find(x=>x.id===m.estId);
     const obra=DB.obras.find(x=>String(x.id)===String(m.obraId));
     const isEnt=m.tipo==='Entrada';
-    return `<tr>
-      <td style="font-size:11px;white-space:nowrap">${fmtDt(m.data)}</td>
-      <td class="n">${est?.material||'—'}<div style="font-size:10px;color:var(--txt3)">${est?.un||''}</div></td>
-      <td style="font-size:11px;color:var(--txt2)">${obra?.nome||'—'}</td>
-      <td style="text-align:center"><span class="b ${isEnt?'bg':'br'}" style="font-size:10px">${isEnt?'↑ Entrada':'↓ Saída'}</span></td>
-      <td style="text-align:right;font-weight:700;color:${isEnt?'var(--green)':'var(--red)'}">${isEnt?'+':'-'}${Number(m.qtd).toFixed(2)}</td>
-      <td style="font-size:11px;color:var(--txt3)">${m.nf||'—'}</td>
-      <td style="font-size:11px">${m.obs||'—'}</td>
-      <td><button class="btn sm ico" onclick="delMov('${m.id}')" title="Excluir">🗑️</button></td>
-    </tr>`;
+    return `<div class="mov-card" onclick="this.classList.toggle('open')" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:.2s;border-left:4px solid ${isEnt?'var(--green)':'var(--red)'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px;color:var(--txt)">${est?.material||'—'}</div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:2px">${fmtDt(m.data)} · ${obra?.nome||'—'}</div>
+        </div>
+        <span class="b ${isEnt?'bg':'br'}" style="font-size:10px;white-space:nowrap">${isEnt?'↑ Entrada':'↓ Saída'}</span>
+        <div style="font-weight:700;font-size:14px;color:${isEnt?'var(--green)':'var(--red)'};white-space:nowrap;font-feature-settings:'tnum'">${isEnt?'+':'-'}${Number(m.qtd).toFixed(2)} ${est?.un||'un'}</div>
+        <span style="font-size:11px;color:var(--txt3);transition:.2s" class="mov-arrow">▸</span>
+      </div>
+      <div class="mov-detail" style="max-height:0;overflow:hidden;transition:max-height .25s ease">
+        <div style="padding-top:12px;border-top:1px solid var(--border);margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+          <div><span style="color:var(--txt3)">NF / Ref.:</span> ${m.nf||'—'}</div>
+          <div><span style="color:var(--txt3)">Unidade:</span> ${est?.un||'—'}</div>
+          <div style="grid-column:span 2"><span style="color:var(--txt3)">Observação:</span> ${m.obs||'—'}</div>
+          <div style="grid-column:span 2;text-align:right;padding-top:6px">
+            <button class="btn sm" onclick="event.stopPropagation();delMov('${m.id}')" style="color:var(--red);font-size:11px">🗑️ Excluir</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
   }).join('');
   el.innerHTML=`
+  <style>.mov-card.open .mov-detail{max-height:200px!important}.mov-card.open .mov-arrow{transform:rotate(90deg)}.mov-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}</style>
   <div class="g g3" style="margin-bottom:12px">
     <div class="kpi"><div class="kl">Total Movimentos</div><div class="kv">${movs.length}</div></div>
     <div class="kpi"><div class="kl">Total Entradas</div><div class="kv" style="color:var(--green)">+${totEnt.toFixed(2)} un</div></div>
     <div class="kpi"><div class="kl">Total Saídas</div><div class="kv" style="color:var(--red)">-${totSai.toFixed(2)} un</div></div>
   </div>
-  <table class="tbl">
-    <tr><th>Data</th><th>Material</th><th>Obra</th><th style="text-align:center">Tipo</th><th style="text-align:right">Qtd</th><th>NF / Ref.</th><th>Observação</th><th></th></tr>
-    ${rows}
-  </table>`;
+  <div style="display:flex;flex-direction:column;gap:8px">${cards}</div>`;
 }
 function delMov(id){if(!confirm('Excluir movimentação?'))return;const mov=DB.movs.find(m=>String(m.id)===String(id));DB.movs=DB.movs.filter(m=>String(m.id)!==String(id));if(mov&&typeof mov.id==='string'&&mov.id.includes('-'))supaDelete('movimentacoes',mov.id);save();renderMovsPanel();renderEstoqueSaldo();toast('🗑️','Movimentação excluída.');}
 
@@ -6061,7 +6070,7 @@ function driveOpen(id){
     root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside)document.getElementById('modal-root').innerHTML=''">
       <div class="mo" style="max-width:92vw;max-height:92vh;padding:0;background:transparent;box-shadow:none">
         <img src="${fileUrl}" style="max-width:88vw;max-height:80vh;border-radius:10px;object-fit:contain;display:block;margin:0 auto">
-        <div style="text-align:center;margin-top:10px;display:flex;gap:8px;justify-content:center">
+        <div style="text-align:center;margin-top:10px;display:flex;gap:8px;justify-content:center;background:var(--bg2,#fff);padding:10px 16px;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.3)">
           ${btnBaixar}${btnEnviar}${btnFechar}
         </div>
       </div></div>`;
@@ -6258,43 +6267,46 @@ function renderDemandas(){
   const STATUS_COR={pendente:'by',andamento:'bb',concluida:'bg'};
   const STATUS_LABEL={pendente:'Pendente',andamento:'Em andamento',concluida:'Concluída'};
 
-  el.innerHTML=`<table class="tbl">
-    <tr>
-      <th>Tarefa</th><th>Obra</th><th>Categoria</th>
-      <th>Responsável</th><th>Prazo</th><th>Prioridade</th>
-      <th>Status</th><th></th>
-    </tr>`+
-    demandas.sort((a,b)=>{
-      const po={alta:0,media:1,baixa:2};
-      return (po[a.prioridade]||1)-(po[b.prioridade]||1);
-    }).map(d=>{
-      const obra=DB.obras.find(o=>String(o.id)===String(d.obraId));
-      const venc=d.prazo&&new Date(d.prazo)<new Date()&&d.status!=='concluida';
-      return`<tr style="${d.status==='concluida'?'opacity:.6':''}">
-        <td>
-          <div style="font-weight:600;color:var(--txt)">${d.titulo}</div>
-          ${d.desc?`<div style="font-size:11px;color:var(--txt3);margin-top:2px">${d.desc}</div>`:''}
-        </td>
-        <td style="font-size:11px;color:var(--txt2)">${obra?.nome||'—'}</td>
-        <td style="font-size:11px;color:var(--txt3)">${d.categoria||'—'}</td>
-        <td style="font-size:11px">${d.responsavel||'—'}</td>
-        <td style="font-size:11px;color:${venc?'var(--red)':'inherit'}">${d.prazo?fmtDt(d.prazo):'—'}${venc?' ⚠':''}</td>
-        <td><span class="b ${PRIOR_COR[d.prioridade]||'bn'}">${PRIOR_LABEL[d.prioridade]||'—'}</span></td>
-        <td>
-          <select class="sel" style="height:24px;font-size:11px;padding:0 4px;width:130px" onchange="demMudarStatus('${d.id}',this.value)">
+  const demCards=demandas.sort((a,b)=>{
+    const po={alta:0,media:1,baixa:2};
+    return (po[a.prioridade]||1)-(po[b.prioridade]||1);
+  }).map(d=>{
+    const obra=DB.obras.find(o=>String(o.id)===String(d.obraId));
+    const venc=d.prazo&&new Date(d.prazo)<new Date()&&d.status!=='concluida';
+    const prCor={alta:'var(--red)',media:'var(--yellow)',baixa:'var(--green)'};
+    return`<div class="dem-card" onclick="this.classList.toggle('open')" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:.2s;border-left:4px solid ${prCor[d.prioridade]||'var(--border)'};opacity:${d.status==='concluida'?'.65':'1'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px">
+          <div style="font-weight:600;font-size:13px;color:var(--txt)">${d.numero?'#'+d.numero+' — ':''}${d.titulo}</div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:3px">${obra?.nome||'Sem obra'}${d.responsavel?' · '+d.responsavel:''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <span class="b ${PRIOR_COR[d.prioridade]||'bn'}" style="font-size:10px">${PRIOR_LABEL[d.prioridade]||'—'}</span>
+          <select class="sel" style="height:28px;font-size:10px;padding:0 6px;width:auto;min-height:28px;border-radius:6px" onclick="event.stopPropagation()" onchange="event.stopPropagation();demMudarStatus('${d.id}',this.value)">
             <option value="pendente"${d.status==='pendente'?' selected':''}>⏳ Pendente</option>
             <option value="andamento"${d.status==='andamento'?' selected':''}>🔄 Em andamento</option>
             <option value="concluida"${d.status==='concluida'?' selected':''}>✅ Concluída</option>
           </select>
-        </td>
-        <td>
-          <div class="ta-actions">
-            <button class="btn sm ico" onclick="openModal('demanda','${d.id}')" title="Editar">✏️</button>
-            <button class="btn sm ico" onclick="delDemanda('${d.id}')" title="Excluir">🗑️</button>
+          ${venc?'<span style="color:var(--red);font-size:11px;font-weight:600">⚠ Vencida</span>':''}
+          <span style="font-size:11px;color:var(--txt3);transition:.2s" class="dem-arrow">▸</span>
+        </div>
+      </div>
+      <div class="dem-detail" style="max-height:0;overflow:hidden;transition:max-height .3s ease">
+        <div style="padding-top:12px;border-top:1px solid var(--border);margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+          ${d.desc?`<div style="grid-column:span 2"><span style="color:var(--txt3)">Descrição:</span> ${d.desc}</div>`:''}
+          <div><span style="color:var(--txt3)">Categoria:</span> ${d.categoria||'—'}</div>
+          <div><span style="color:var(--txt3)">Prazo:</span> <span style="color:${venc?'var(--red)':'inherit'}">${d.prazo?fmtDt(d.prazo):'—'}</span></div>
+          ${d.obs?`<div style="grid-column:span 2"><span style="color:var(--txt3)">Obs:</span> ${d.obs}</div>`:''}
+          <div style="grid-column:span 2;text-align:right;padding-top:6px;display:flex;gap:6px;justify-content:flex-end">
+            <button class="btn sm pri" onclick="event.stopPropagation();openModal('demanda','${d.id}')" style="font-size:11px">✏️ Editar</button>
+            <button class="btn sm" onclick="event.stopPropagation();delDemanda('${d.id}')" style="color:var(--red);font-size:11px">🗑️ Excluir</button>
           </div>
-        </td>
-      </tr>`;
-    }).join('')+'</table>';
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML=`<style>.dem-card.open .dem-detail{max-height:300px!important}.dem-card.open .dem-arrow{transform:rotate(90deg)}.dem-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}</style>
+  <div style="display:flex;flex-direction:column;gap:8px">${demCards}</div>`;
 }
 
 function demMudarStatus(id,status){
@@ -6931,12 +6943,10 @@ function openModal(type,editId=null,editId2=null){
         <input type="date" class="inp" id="l-data" value="${l?.data||new Date().toISOString().split('T')[0]}">
       </div>
       <div class="fg"><label class="lbl">Obra</label>
-        <select class="sel" id="l-obra">${DB.obras.map(o=>`<option value="${o.id}"${(l?.obraId||obra?.id)==o.id?' selected':''}>${o.nome}</option>`).join('')}</select>
+        <select class="sel" id="l-obra" onchange="_refreshLancEtapas(this.value)">${DB.obras.map(o=>`<option value="${o.id}"${(l?.obraId||obra?.id)==o.id?' selected':''}>${o.nome}</option>`).join('')}</select>
       </div>
-      <div class="fg"><label class="lbl">Centro de Custos
-        <button type="button" onclick="cadastroAddInline('centro','l-cc')" style="margin-left:6px;font-size:9px;padding:1px 5px;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;color:var(--txt3);cursor:pointer" title="Novo centro">＋ novo</button>
-      </label>
-        <select class="sel" id="l-cc">${ccOpts}</select>
+      <div class="fg"><label class="lbl">Etapa</label>
+        <select class="sel" id="l-etapa"><option value="">— Selecionar —</option>${DB.etapas.filter(e=>!obra||e.obraId==obra.id).map(e=>`<option value="${e.nome}"${l?.etapa===e.nome?' selected':''}>${e.nome}</option>`).join('')}</select>
       </div>
       <div class="fg"><label class="lbl">Fornecedor
         <button type="button" onclick="closeModal();goPage('fornecedores')" style="margin-left:6px;font-size:9px;padding:1px 5px;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;color:var(--txt3);cursor:pointer" title="Cadastrar fornecedor">＋ cadastrar</button>
@@ -6957,7 +6967,7 @@ function openModal(type,editId=null,editId2=null){
       const dados={
         desc,tipo:document.getElementById('l-tipo').value,
         cat:document.getElementById('l-cat').value,
-        cc:document.getElementById('l-cc').value||'',
+        etapa:document.getElementById('l-etapa')?.value||'',
         valor,data:document.getElementById('l-data').value,
         obraId:document.getElementById('l-obra').value||null,
         forn:fornTxt||fornSel||'',
@@ -6965,12 +6975,12 @@ function openModal(type,editId=null,editId2=null){
       };
       if(l){
         Object.assign(l,dados);
-        supaUpdate('lancamentos',l.id,{tipo:dados.tipo,descricao:dados.desc,categoria:dados.cat,centro_custo:dados.cc,valor:dados.valor,data:dados.data,fornecedor:dados.forn,nota_fiscal:dados.nf,obra_id:dados.obraId||null});
+        supaUpdate('lancamentos',l.id,{tipo:dados.tipo,descricao:dados.desc,categoria:dados.cat,centro_custo:dados.etapa||'',valor:dados.valor,data:dados.data,fornecedor:dados.forn,nota_fiscal:dados.nf,obra_id:dados.obraId||null});
       } else {
         const novoId=uuidv4();
         const nl={id:novoId,...dados,_supa:true};
         DB.lancs.push(nl);
-        supaInsert('lancamentos',{id:novoId,tipo:dados.tipo,descricao:dados.desc,categoria:dados.cat,centro_custo:dados.cc,valor:dados.valor,data:dados.data,fornecedor:dados.forn,nota_fiscal:dados.nf,obra_id:dados.obraId||null});
+        supaInsert('lancamentos',{id:novoId,tipo:dados.tipo,descricao:dados.desc,categoria:dados.cat,centro_custo:dados.etapa||'',valor:dados.valor,data:dados.data,fornecedor:dados.forn,nota_fiscal:dados.nf,obra_id:dados.obraId||null});
       }
       save();renderFin();toast('✅',l?'Lançamento atualizado!':'Lançamento registrado!');return true;
     };
@@ -7682,6 +7692,10 @@ function openModal(type,editId=null,editId2=null){
     window._postModalRender=null;
     setTimeout(cb,30);
   }
+}
+function _refreshLancEtapas(obraVal){
+  const sel=document.getElementById('l-etapa');if(!sel)return;
+  sel.innerHTML='<option value="">— Selecionar —</option>'+DB.etapas.filter(e=>!obraVal||e.obraId==parseInt(obraVal)).map(e=>'<option value="'+e.nome+'">'+e.nome+'</option>').join('');
 }
 function _refreshCtEtapas(obraVal){
   const sel=document.getElementById('ct-etapa');if(!sel)return;
