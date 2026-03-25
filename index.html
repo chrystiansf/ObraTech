@@ -181,14 +181,14 @@ body:not(.light) #theme-toggle::before{transform:translateX(0)}
 .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}.dot-g{background:var(--green);box-shadow:0 0 4px var(--green)}.dot-r{background:var(--red)}.dot-y{background:var(--yellow)}.dot-b{background:var(--primary)}
 /* Nav items */
 nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
-.nsec{padding:12px 15px 4px;font-size:8px;color:var(--txt3);text-transform:uppercase;letter-spacing:1px;font-weight:700;opacity:.5}
-.nsec:first-child{padding-top:6px}
+
+
 .ni{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;color:var(--txt2);font-size:12.5px;font-weight:500;transition:.15s;border-radius:0;margin:0}
 .ni:hover{color:var(--txt);background:var(--bg3)}
 .ni.on{color:var(--primary);background:var(--pglow);font-weight:600}
-.ni .ic{font-size:15px;width:20px;text-align:center;flex-shrink:0;opacity:.6}
-.ni.on .ic{opacity:1}
-.ni:hover .ic{opacity:.9}
+.ni .ic{font-size:15px;width:20px;text-align:center;flex-shrink:0;filter:grayscale(1) brightness(1.8);opacity:.55;transition:all .15s}
+.ni.on .ic{filter:none;opacity:1}
+.ni:hover .ic{filter:grayscale(.5) brightness(1.3);opacity:.8}
 /* Sub-items */
 .ni-sub{display:none;flex-direction:column}
 .ni.on+.ni-sub,.ni-parent.open+.ni-sub{display:flex}
@@ -595,31 +595,21 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
     </div>
   </div>
   <nav>
-    <div class="ni on" data-p="dashboard" onclick="goPage('dashboard')"><span class="ic">📊</span><span class="sb-txt">Dashboard</span></div>
-    <div class="ni" data-p="obras" onclick="goPage('obras')"><span class="ic">🏗️</span><span class="sb-txt">Obras</span></div>
-    <div class="ni" data-p="cronograma" onclick="goPage('cronograma')"><span class="ic">📅</span><span class="sb-txt">Cronograma</span></div>
-    <div class="ni" data-p="rdo" onclick="goPage('rdo')"><span class="ic">📋</span><span class="sb-txt">RDO Diario</span></div>
-    <div class="ni ni-parent" data-p="equipe" onclick="goPage('equipe')"><span class="ic">👷</span><span class="sb-txt">Equipe & Ponto</span></div>
-    <div class="ni-sub sb-hide">
-      <div class="ni-s" onclick="goPage('equipe');setTimeout(()=>swTab(document.querySelector('[onclick*=t-colab]'),'t-colab'),50)">Colaboradores</div>
-      <div class="ni-s" onclick="goPage('equipe');setTimeout(()=>swTab(document.querySelector('[onclick*=t-ponto]'),'t-ponto'),50)">Presenca</div>
-      <div class="ni-s" onclick="goPage('equipe');setTimeout(()=>swTab(document.querySelector('[onclick*=t-folha]'),'t-folha'),50)">Folha Semanal</div>
-      <div class="ni-s" onclick="goPage('equipe');setTimeout(()=>{swTab(document.querySelector('[onclick*=t-tercs]'),'t-tercs');renderTerceirizados()},50)">Terceirizados</div>
-    </div>
-    <div class="ni" data-p="estoque" onclick="goPage('estoque')"><span class="ic">📦</span><span class="sb-txt">Estoque</span></div>
-    <div class="ni" data-p="financeiro" onclick="goPage('financeiro')"><span class="ic">💰</span><span class="sb-txt">Financeiro</span></div>
-    <div class="ni" data-p="contratos" onclick="goPage('contratos')"><span class="ic">📑</span><span class="sb-txt">Contratos</span></div>
-    <div class="ni" data-p="drive" onclick="goPage('drive')"><span class="ic">📁</span><span class="sb-txt">Drive / GED</span></div>
-    <div class="ni ni-parent" data-p="qualidade" onclick="goPage('qualidade')"><span class="ic">✅</span><span class="sb-txt">Qualidade</span></div>
-    <div class="ni-sub sb-hide">
-      <div class="ni-s" onclick="goPage('qualidade');setTimeout(()=>{document.getElementById('qual-panel-nc').style.display='block';document.getElementById('qual-panel-chk').style.display='none'},50)">Nao Conformidades</div>
-      <div class="ni-s" onclick="goPage('qualidade');setTimeout(()=>{document.getElementById('qual-panel-chk').style.display='block';document.getElementById('qual-panel-nc').style.display='none'},50)">Checklists</div>
-    </div>
-    <div class="ni" data-p="demandas" onclick="goPage('demandas')"><span class="ic">📋</span><span class="sb-txt">Demandas</span></div>
-    <div class="ni" data-p="fornecedores" onclick="goPage('fornecedores')"><span class="ic">🏭</span><span class="sb-txt">Fornecedores</span></div>
-    <div class="ni" data-p="relatorios" onclick="goPage('relatorios')"><span class="ic">📈</span><span class="sb-txt">Relatorios</span></div>
-    <div class="ni" data-p="clientes" id="ni-clientes" onclick="goPage('clientes');setTimeout(()=>usrTab('clientes'),30)"><span class="ic">👤</span><span class="sb-txt">Portal Clientes</span></div>
-    <div class="ni" data-p="clientes" id="ni-equipe-usr" onclick="goPage('clientes');setTimeout(()=>usrTab('equipe'),30)"><span class="ic">⚙️</span><span class="sb-txt">Configuracoes</span></div>
+    <div class="ni" data-p="empresa" onclick="goPage('empresa')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">🏢</span><span class="sb-txt">Minha Empresa</span></div>
+    <div class="ni on" data-p="dashboard" onclick="goPage('dashboard')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📊</span><span class="sb-txt">Dashboard</span></div>
+    <div class="ni" data-p="obras" onclick="goPage('obras')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">🏗️</span><span class="sb-txt">Obras</span></div>
+    <div class="ni" data-p="cronograma" onclick="goPage('cronograma')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📅</span><span class="sb-txt">Cronograma</span></div>
+    <div class="ni" data-p="rdo" onclick="goPage('rdo')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📋</span><span class="sb-txt">RDO Diario</span></div>
+    <div class="ni" data-p="equipe" onclick="goPage('equipe')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">👷</span><span class="sb-txt">Equipe / Folha</span></div>
+    <div class="ni" data-p="estoque" onclick="goPage('estoque')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📦</span><span class="sb-txt">Estoque</span></div>
+    <div class="ni" data-p="financeiro" onclick="goPage('financeiro')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">💰</span><span class="sb-txt">Financeiro</span></div>
+    <div class="ni" data-p="contratos" onclick="goPage('contratos')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📑</span><span class="sb-txt">Contratos</span></div>
+    <div class="ni" data-p="drive" onclick="goPage('drive')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📁</span><span class="sb-txt">Drive</span></div>
+    <div class="ni" data-p="qualidade" onclick="goPage('qualidade')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">✅</span><span class="sb-txt">Qualidade</span></div>
+    <div class="ni" data-p="demandas" onclick="goPage('demandas')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📋</span><span class="sb-txt">Demandas</span></div>
+    <div class="ni" data-p="fornecedores" onclick="goPage('fornecedores')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">🏭</span><span class="sb-txt">Fornecedores</span></div>
+    <div class="ni" data-p="relatorios" onclick="goPage('relatorios')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📈</span><span class="sb-txt">Relatorios</span></div>
+    <div class="ni" data-p="cadastros" onclick="goPage('cadastros')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">👥</span><span class="sb-txt">Cadastros</span></div>
   </nav>
   <div class="sbfoot">
     <div class="av" id="user-av" onclick="openUserModal()" style="overflow:hidden">?</div>
@@ -1211,11 +1201,12 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
 </div>
 
 <!-- CLIENTES / PORTAL -->
-<div class="page" id="p-clientes">
+<div class="page" id="p-cadastros">
   <!-- Tabs -->
   <div style="display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border)">
-    <div class="usr-tab on" data-ut="clientes" onclick="usrTab('clientes')" style="padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--primary);color:var(--primary)">👤 Portal Clientes</div>
-    <div class="usr-tab" data-ut="equipe" onclick="usrTab('equipe')" style="padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--txt3)">👷 Equipe / Usuários</div>
+    <div class="usr-tab on" data-ut="empresa" onclick="usrTab('empresa')" style="padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--primary);color:var(--primary)">🏢 Minha Empresa</div>
+    <div class="usr-tab" data-ut="cadastros" onclick="usrTab('clientes')" style="padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--primary);color:var(--primary)">👤 Clientes</div>
+    <div class="usr-tab" data-ut="equipe" onclick="usrTab('equipe')" style="padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--txt3)">👷 Equipe</div>
     <div class="usr-tab" data-ut="empresa" onclick="usrTab('empresa')" style="padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--txt3)">🏢 Minha Empresa</div>
   </div>
 
@@ -2334,15 +2325,15 @@ const MODULOS_SISTEMA=[
   {id:"obras",       label:"Obras",           ic:"🏗️"},
   {id:"cronograma",  label:"Cronograma",      ic:"📅"},
   {id:"rdo",         label:"RDO Diário",      ic:"📋"},
-  {id:"equipe",      label:"Equipe & Ponto",  ic:"👷"},
+  {id:"equipe",      label:"Equipe / Folha",  ic:"👷"},
   {id:"estoque",     label:"Estoque",         ic:"📦"},
   {id:"financeiro",  label:"Financeiro",      ic:"💰"},
   {id:"contratos",   label:"Contratos",       ic:"📑"},
-  {id:"drive",       label:"Drive / GED",     ic:"📁"},
+  {id:"drive",       label:"Drive",           ic:"📁"},
   {id:"qualidade",   label:"Qualidade",       ic:"✅"},
   {id:"demandas",    label:"Demandas",        ic:"📋"},
   {id:"fornecedores",label:"Fornecedores",    ic:"🏭"},
-  {id:"clientes",    label:"Clientes/Equipe", ic:"👥"},
+  {id:"cadastros",   label:"Cadastros",       ic:"👥"},
   {id:"relatorios",  label:"Relatórios",      ic:"📈"},
 ];
 
@@ -2360,10 +2351,11 @@ function usrTab(tab){
     t.style.borderBottomColor=on?"var(--primary)":"transparent";
     t.style.color=on?"var(--primary)":"var(--txt3)";
   });
-  document.getElementById("usr-panel-clientes").style.display=tab==="clientes"?"block":"none";
+  document.getElementById("usr-panel-clientes").style.display=tab==="cadastros"?"block":"none";
   document.getElementById("usr-panel-equipe").style.display=tab==="equipe"?"block":"none";
   const empPanel=document.getElementById("usr-panel-empresa");
   if(empPanel) empPanel.style.display=tab==="empresa"?"block":"none";
+  document.getElementById("p-cadastros")?.querySelector(".usr-tab.on")?.classList;
   if(tab==="equipe") carregarEquipeUsuarios();
   if(tab==="empresa") renderBrandingEmpresa();
 }
@@ -3427,7 +3419,7 @@ document.addEventListener('click', e=>{
 // ═══════════════════════════════════════════
 // NAV
 // ═══════════════════════════════════════════
-const TITLES={dashboard:'Dashboard',obras:'Obras',cronograma:'Cronograma',rdo:'RDO Diário',equipe:'Equipe & Ponto',estoque:'Estoque',financeiro:'Financeiro',drive:'Drive / GED',qualidade:'Qualidade',relatorios:'Relatórios',demandas:'Demandas',fornecedores:'Fornecedores',contratos:'Contratos',clientes:'Portal Clientes'};
+const TITLES={empresa:'Minha Empresa',dashboard:'Dashboard',obras:'Obras',cronograma:'Cronograma',rdo:'RDO Diário',equipe:'Equipe / Folha',estoque:'Estoque',financeiro:'Financeiro',drive:'Drive',qualidade:'Qualidade',relatorios:'Relatórios',demandas:'Demandas',fornecedores:'Fornecedores',contratos:'Contratos',cadastros:'Cadastros'};
 const NEW_ACTIONS={obras:()=>openMocModal(),cronograma:()=>openModal('etapa'),rdo:null,equipe:()=>{const tercsEl=document.getElementById('t-tercs');if(tercsEl&&tercsEl.style.display!=='none'){openModal('terceirizado')}else{openModal('colab')}},estoque:()=>{estSwTab('catalogo');openModal('material');},financeiro:()=>openModal('lanc'),qualidade:()=>openModal('nc'),contratos:()=>openModal('contrato')};
 
 function goPage(id){
@@ -3444,7 +3436,7 @@ function goPage(id){
   document.querySelector(`.mni[data-p="${id}"]`)?.classList.add('on');
   document.getElementById('ptitle').textContent=TITLES[id]||id;
   updateSbObra();fillSelects();
-  const _renderFns={dashboard:renderDash,obras:renderObras,cronograma:renderCron,rdo:renderRDO,equipe:renderEquipe,estoque:renderEstoque,financeiro:renderFin,drive:()=>{if(_drvObraId)carregarDriveArqs();else renderDrive();},qualidade:renderQual,contratos:renderContratos,relatorios:()=>{},demandas:renderDemandas,fornecedores:renderFornecedores,clientes:renderClientes};
+  const _renderFns={dashboard:renderDash,obras:renderObras,cronograma:renderCron,rdo:renderRDO,equipe:renderEquipe,estoque:renderEstoque,financeiro:renderFin,drive:()=>{if(_drvObraId)carregarDriveArqs();else renderDrive();},qualidade:renderQual,contratos:renderContratos,relatorios:()=>{},demandas:renderDemandas,fornecedores:renderFornecedores,cadastros:renderClientes,empresa:()=>{goPage("cadastros");setTimeout(()=>usrTab("empresa"),30)}};
   _renderFns[id]?.();
   window._paginaAtual=id;
 }
@@ -3456,7 +3448,7 @@ function renderPaginaAtual(){
   if(id==='drive'){if(_drvObraId)carregarDriveArqs();else renderDrive();return;}
   const fns={dashboard:renderDash,obras:renderObras,cronograma:renderCron,rdo:renderRDO,
     equipe:renderEquipe,estoque:renderEstoque,financeiro:renderFin,qualidade:renderQual,
-    contratos:renderContratos,demandas:renderDemandas,fornecedores:renderFornecedores,clientes:renderClientes};
+    contratos:renderContratos,demandas:renderDemandas,fornecedores:renderFornecedores,cadastros:renderClientes};
   fns[id]?.();
 }
 function mainNew(){const p=document.querySelector('.ni.on')?.dataset.p;NEW_ACTIONS[p]?.();}
