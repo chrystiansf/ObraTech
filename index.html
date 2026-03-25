@@ -341,8 +341,7 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
   /* Topbar mobile */
   #topbar{padding:8px 12px;gap:6px;flex-wrap:nowrap;overflow-x:auto}
   #topbar h1{font-size:14px;white-space:nowrap}
-  #topbar .btn:not(#btn-new):not(#theme-toggle){display:none}
-  #btn-new{font-size:12px;padding:0 10px;height:30px}
+  #topbar .btn:not(#theme-toggle){display:none}
   #theme-toggle{min-width:30px}
 
   /* Páginas */
@@ -504,10 +503,10 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
 .mni-more-item .lb{font-size:10px;font-weight:600;color:var(--txt2);text-align:center}
 
 /* Botão hamburger no topbar (só mobile) */
-#mob-menu-btn{display:none}
+/* mob-menu-btn removido */
 @media(max-width:768px){
   #mobile-nav{display:block}
-  #mob-menu-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);cursor:pointer;font-size:18px;flex-shrink:0}
+  /* mob-menu-btn removido */
 }
 </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -647,9 +646,7 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
   <div id="topbar">
     <h1 id="ptitle">Dashboard</h1>
     <span id="obra-tag" style="font-size:11px;color:var(--txt3)"></span>
-    <div id="mob-menu-btn" onclick="toggleMobileSidebar()" title="Menu">☰</div>
     <button id="theme-toggle" onclick="toggleTheme()" title="Alternar tema claro/escuro"></button>
-    <button class="btn pri" id="btn-new" onclick="mainNew()">＋ Novo</button>
     <input type="file" id="import-obra-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportObraFile(event)">
   </div>
   <div id="content">
