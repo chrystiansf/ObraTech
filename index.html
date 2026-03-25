@@ -186,9 +186,9 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
 .ni{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;color:var(--txt2);font-size:12.5px;font-weight:500;transition:.15s;border-radius:0;margin:0}
 .ni:hover{color:var(--txt);background:var(--bg3)}
 .ni.on{color:var(--primary);background:var(--pglow);font-weight:600}
-.ni .ic{font-size:15px;width:20px;text-align:center;flex-shrink:0;filter:grayscale(1) brightness(1.8);opacity:.55;transition:all .15s}
+.ni .ic{font-size:15px;width:20px;text-align:center;flex-shrink:0;filter:grayscale(1);opacity:.65;transition:all .15s}
 .ni.on .ic{filter:none;opacity:1}
-.ni:hover .ic{filter:grayscale(.5) brightness(1.3);opacity:.8}
+.ni:hover .ic{filter:grayscale(.3);opacity:.85}
 /* Sub-items */
 .ni-sub{display:none;flex-direction:column}
 .ni.on+.ni-sub,.ni-parent.open+.ni-sub{display:flex}
@@ -595,21 +595,21 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
     </div>
   </div>
   <nav>
-    <div class="ni" data-p="empresa" onclick="goPage('empresa')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">🏢</span><span class="sb-txt">Minha Empresa</span></div>
-    <div class="ni on" data-p="dashboard" onclick="goPage('dashboard')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📊</span><span class="sb-txt">Dashboard</span></div>
-    <div class="ni" data-p="obras" onclick="goPage('obras')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">🏗️</span><span class="sb-txt">Obras</span></div>
-    <div class="ni" data-p="cronograma" onclick="goPage('cronograma')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📅</span><span class="sb-txt">Cronograma</span></div>
-    <div class="ni" data-p="rdo" onclick="goPage('rdo')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📋</span><span class="sb-txt">RDO Diario</span></div>
-    <div class="ni" data-p="equipe" onclick="goPage('equipe')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">👷</span><span class="sb-txt">Equipe / Folha</span></div>
-    <div class="ni" data-p="estoque" onclick="goPage('estoque')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📦</span><span class="sb-txt">Estoque</span></div>
-    <div class="ni" data-p="financeiro" onclick="goPage('financeiro')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">💰</span><span class="sb-txt">Financeiro</span></div>
-    <div class="ni" data-p="contratos" onclick="goPage('contratos')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📑</span><span class="sb-txt">Contratos</span></div>
-    <div class="ni" data-p="drive" onclick="goPage('drive')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📁</span><span class="sb-txt">Drive</span></div>
-    <div class="ni" data-p="qualidade" onclick="goPage('qualidade')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">✅</span><span class="sb-txt">Qualidade</span></div>
-    <div class="ni" data-p="demandas" onclick="goPage('demandas')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📋</span><span class="sb-txt">Demandas</span></div>
-    <div class="ni" data-p="fornecedores" onclick="goPage('fornecedores')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">🏭</span><span class="sb-txt">Fornecedores</span></div>
-    <div class="ni" data-p="relatorios" onclick="goPage('relatorios')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">📈</span><span class="sb-txt">Relatorios</span></div>
-    <div class="ni" data-p="cadastros" onclick="goPage('cadastros')"><span class="ic" style="font-size:15px;filter:grayscale(1) brightness(1.8) opacity(.55)">👥</span><span class="sb-txt">Cadastros</span></div>
+    <div class="ni" data-p="empresa" onclick="goPage('empresa')"><span class="ic">🏢</span><span class="sb-txt">Minha Empresa</span></div>
+    <div class="ni on" data-p="dashboard" onclick="goPage('dashboard')"><span class="ic">📊</span><span class="sb-txt">Dashboard</span></div>
+    <div class="ni" data-p="obras" onclick="goPage('obras')"><span class="ic">🏗️</span><span class="sb-txt">Obras</span></div>
+    <div class="ni" data-p="cronograma" onclick="goPage('cronograma')"><span class="ic">📅</span><span class="sb-txt">Cronograma</span></div>
+    <div class="ni" data-p="rdo" onclick="goPage('rdo')"><span class="ic">📋</span><span class="sb-txt">RDO Diario</span></div>
+    <div class="ni" data-p="equipe" onclick="goPage('equipe')"><span class="ic">👷</span><span class="sb-txt">Equipe / Folha</span></div>
+    <div class="ni" data-p="estoque" onclick="goPage('estoque')"><span class="ic">📦</span><span class="sb-txt">Estoque</span></div>
+    <div class="ni" data-p="financeiro" onclick="goPage('financeiro')"><span class="ic">💰</span><span class="sb-txt">Financeiro</span></div>
+    <div class="ni" data-p="contratos" onclick="goPage('contratos')"><span class="ic">📑</span><span class="sb-txt">Contratos</span></div>
+    <div class="ni" data-p="drive" onclick="goPage('drive')"><span class="ic">📁</span><span class="sb-txt">Drive</span></div>
+    <div class="ni" data-p="qualidade" onclick="goPage('qualidade')"><span class="ic">✅</span><span class="sb-txt">Qualidade</span></div>
+    <div class="ni" data-p="demandas" onclick="goPage('demandas')"><span class="ic">📋</span><span class="sb-txt">Demandas</span></div>
+    <div class="ni" data-p="fornecedores" onclick="goPage('fornecedores')"><span class="ic">🏭</span><span class="sb-txt">Fornecedores</span></div>
+    <div class="ni" data-p="relatorios" onclick="goPage('relatorios')"><span class="ic">📈</span><span class="sb-txt">Relatorios</span></div>
+    <div class="ni" data-p="cadastros" onclick="goPage('cadastros')"><span class="ic">👥</span><span class="sb-txt">Cadastros</span></div>
   </nav>
   <div class="sbfoot">
     <div class="av" id="user-av" onclick="openUserModal()" style="overflow:hidden">?</div>
