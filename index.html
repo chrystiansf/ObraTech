@@ -4370,8 +4370,16 @@ function rdoMarcarTodos(estado){
   if(!data){toast('⚠️','Informe a data primeiro!');return;}
   DB.colabs.forEach(col=>{
     const prev=DB.pontos.findIndex(p=>p.colabId===col.id&&p.data===data&&(!oId||p.obraId===oId));
-    if(prev!==-1)DB.pontos.splice(prev,1);
-    if(estado)DB.pontos.push({id:nid(),colabId:col.id,obraId:oId,data,presente:true,tipo:'Presença'});
+    if(prev!==-1){
+      const old=DB.pontos[prev];
+      if(old&&typeof old.id==='string'&&old.id.includes('-'))supaDelete('pontos',old.id);
+      DB.pontos.splice(prev,1);
+    }
+    if(estado){
+      const newId=uuidv4();
+      DB.pontos.push({id:newId,colabId:col.id,obraId:oId,data,presente:true,tipo:'Presenca',_supa:true});
+      supaInsert('pontos',{id:newId,colaborador_id:col.id,obra_id:oId||null,data,presente:true,tipo:'Presenca'});
+    }
   });
   save();rdoRenderPresenca();
   const presentes=estado?DB.colabs.length:0;
@@ -4648,12 +4656,20 @@ function salvarPresenca(){
       const cb=document.querySelector(`select[data-colab="${col.id}"][data-data="${d}"]`);
       if(!cb)return;
       const prev=DB.pontos.findIndex(p=>p.colabId===col.id&&p.data===d&&(!obraId||p.obraId===obraId));
-      if(prev!==-1)DB.pontos.splice(prev,1);
+      if(prev!==-1){
+        const old=DB.pontos[prev];
+        if(old&&typeof old.id==='string'&&old.id.includes('-'))supaDelete('pontos',old.id);
+        DB.pontos.splice(prev,1);
+      }
       if(cb.value==='P'){
-        DB.pontos.push({id:nid(),colabId:col.id,obraId,data:d,presente:true,tipo:'Presenca'});
+        const newId=uuidv4();
+        DB.pontos.push({id:newId,colabId:col.id,obraId,data:d,presente:true,tipo:'Presenca',_supa:true});
+        supaInsert('pontos',{id:newId,colaborador_id:col.id,obra_id:obraId||null,data:d,presente:true,tipo:'Presenca'});
         salvos++;
       } else if(cb.value==='M'){
-        DB.pontos.push({id:nid(),colabId:col.id,obraId,data:d,presente:true,tipo:'meia_diaria'});
+        const newId=uuidv4();
+        DB.pontos.push({id:newId,colabId:col.id,obraId,data:d,presente:true,tipo:'meia_diaria',_supa:true});
+        supaInsert('pontos',{id:newId,colaborador_id:col.id,obra_id:obraId||null,data:d,presente:true,tipo:'meia_diaria'});
         salvos++;
       } else removidos++;
     });
@@ -5102,6 +5118,10 @@ function cadastroAddInline(tipo,selId){
   const key=tipo==='centro'?'centros':tipo==='categoria'?'categorias':'fornecedores';
   if(DB[key].includes(val)){toast('⚠️','Já existe!');return;}
   DB[key].push(val);save();
+  // Salvar no Supabase
+  const tabela=tipo==='centro'?'centros_custo':tipo==='categoria'?'categorias':'fornecedores_cadastro';
+  const dados=tipo==='fornecedor'?{id:uuidv4(),nome:val}:{id:uuidv4(),nome:val};
+  supaInsert(tabela,dados);
   const sel=document.getElementById(selId);
   if(sel){const o=document.createElement('option');o.value=val;o.textContent=val;o.selected=true;sel.appendChild(o);}
   toast('✅',`"${val}" adicionado!`);
@@ -10067,7 +10087,7 @@ function executarImportObra(){
   if(!_importLancs.length){toast('⚠️','Carregue uma planilha com os custos!');return;}
   // Criar obra
   const novaObra={
-    id:nid(),nome,
+    id:uuidv4(),nome,
     tipo:document.getElementById('mio-tipo').value,
     orc:parseFloat(document.getElementById('mio-orc').value)||0,
     m2:parseFloat(document.getElementById('mio-m2').value)||0,
@@ -10080,6 +10100,13 @@ function executarImportObra(){
   };
   DB.obras.push(novaObra);
   if(!DB.sel)DB.sel=novaObra.id;
+  // Auto-criar categorias novas da planilha
+  _importLancs.forEach(l=>{
+    if(l.cat && !DB.categorias.includes(l.cat)){
+      DB.categorias.push(l.cat);
+      supaInsert('categorias',{id:uuidv4(),nome:l.cat});
+    }
+  });
   // Inserir lançamentos no DB local E no Supabase
   let okCount=0;
   const lancsParaSupa=[];
@@ -10277,6 +10304,22 @@ async function executarImportFinanceiro(){
 
   closeModal();
   toast('⏳','Importando '+_importFinLancs.length+' lançamentos...');
+
+  // Auto-criar categorias novas da planilha
+  const catsNovas=new Set();
+  _importFinLancs.forEach(l=>{
+    if(l.cat && !DB.categorias.includes(l.cat)){
+      DB.categorias.push(l.cat);
+      catsNovas.add(l.cat);
+    }
+  });
+  if(catsNovas.size){
+    save();
+    for(const cat of catsNovas){
+      supaInsert('categorias',{id:uuidv4(),nome:cat});
+    }
+    console.log('Categorias criadas:',catsNovas.size);
+  }
 
   let okCount=0;
   const lancsParaSupa=[];
