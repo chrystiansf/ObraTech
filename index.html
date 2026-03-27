@@ -2105,7 +2105,7 @@ function mapObra(r){return{id:r.id,nome:r.nome,tipo:r.tipo,statusManual:r.status
 function mapEtapa(r){return{id:r.id,obraId:r.obra_id,nome:r.nome,status:r.status,pct:r.pct,pctEsp:r.pct_esperado,orc:Number(r.orcamento||0),resp:r.responsavel,inicio:r.inicio,fim:r.fim,sp:r.sp,wp:r.wp,_supa:true};}
 function mapColab(r){return{id:r.id,nome:r.nome,funcao:r.funcao,cpf:r.cpf,admissao:r.admissao,diaria:Number(r.diaria||0),salario:Number(r.salario||0),pis:r.pis,tel:r.telefone,obs:r.obs,_supa:true};}
 function mapLanc(r){return{id:r.id,obraId:r.obra_id,tipo:r.tipo,desc:r.descricao,cat:r.categoria,cc:r.centro_custo,valor:Number(r.valor||0),data:r.data,forn:r.fornecedor,nf:r.nota_fiscal,etapa:r.etapa_id,_supa:true};}
-function mapRdo(r){return{id:r.id,obraId:r.obra_id,data:r.data,clima:r.clima,prev:r.previsto,real:r.realizado,serv:r.servicos,obs:r.obs,mat:r.materiais,status:r.status,fotos:[],_supa:true};}
+function mapRdo(r){return{id:r.id,obraId:r.obra_id,data:r.data,clima:r.clima,prev:r.previsto,real:r.realizado,serv:r.servicos,obs:r.obs,mat:r.materiais,status:r.status,fotos:r.fotos||[],_supa:true};}
 function mapEstoque(r){return{id:r.id,material:r.material,un:r.unidade,qtd:0,min:Number(r.estoque_min||0),preco:Number(r.preco||0),forn:r.fornecedor,_supa:true};}
 function mapMov(r){return{id:r.id,estId:r.estoque_id,obraId:r.obra_id,tipo:r.tipo,qtd:Number(r.quantidade||0),data:r.data,nf:r.nota_fiscal,obs:r.obs,_supa:true};}
 function mapContrato(r){return{id:r.id,obraId:r.obra_id,numero:r.numero,descricao:r.descricao,forn:r.fornecedor,tipo:r.tipo,cat:r.categoria,cc:r.centro_custo,valor:Number(r.valor||0),assinatura:r.assinatura,prazo:r.prazo,obs:r.obs,_supa:true};}
@@ -4409,10 +4409,13 @@ function renderRDO(){
   document.getElementById('rdo-data')?.addEventListener('change',()=>{rdoRenderPresenca();rdoRenderPresencaTercs();});
 }
 function renderFotoGrid(){
-  document.getElementById('rdo-fotos').innerHTML=rdoFotos.map((f,i)=>`<div class="pc" style="flex-direction:column;height:auto;padding:0;overflow:hidden;border-radius:7px;border:1px solid var(--border)"><div style="position:relative;width:100%;height:90px;overflow:hidden"><img src="${f.data}" style="width:100%;height:90px;object-fit:cover;display:block"><button class="rm" onclick="rdoFotos.splice(${i},1);renderFotoGrid()" style="top:4px;right:4px">×</button><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);padding:2px 5px"><span style="font-size:9px;color:#fff">#${i+1}</span></div></div><input type="text" value="${(f.desc||'').replace(/"/g,'&quot;')}" placeholder="Descrição da foto..." oninput="rdoFotos[${i}].desc=this.value" style="width:100%;box-sizing:border-box;border:none;border-top:1px solid var(--border);padding:4px 6px;font-size:10px;color:var(--txt);background:var(--bg2);outline:none;border-radius:0 0 6px 6px"></div>`).join('')+`<div class="pc add" onclick="document.getElementById('rdo-foto-in').click()"><span>📷</span><span style="font-size:9px">Foto</span></div>`;
+  document.getElementById('rdo-fotos').innerHTML=rdoFotos.map((f,i)=>{
+    const imgSrc=f.url||f.data||'';
+    return`<div class="pc" style="flex-direction:column;height:auto;padding:0;overflow:hidden;border-radius:7px;border:1px solid var(--border)"><div style="position:relative;width:100%;height:90px;overflow:hidden"><img src="${imgSrc}" style="width:100%;height:90px;object-fit:cover;display:block"><button class="rm" onclick="rdoFotos.splice(${i},1);renderFotoGrid()" style="top:4px;right:4px">×</button><div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);padding:2px 5px"><span style="font-size:9px;color:#fff">#${i+1}</span></div></div><input type="text" value="${(f.desc||'').replace(/"/g,'&quot;')}" placeholder="Descrição da foto..." oninput="rdoFotos[${i}].desc=this.value" style="width:100%;box-sizing:border-box;border:none;border-top:1px solid var(--border);padding:4px 6px;font-size:10px;color:var(--txt);background:var(--bg2);outline:none;border-radius:0 0 6px 6px"></div>`;
+  }).join('')+`<div class="pc add" onclick="document.getElementById('rdo-foto-in').click()"><span>📷</span><span style="font-size:9px">Foto</span></div>`;
 }
 function addFotos(e){Array.from(e.target.files).forEach(f=>{const r=new FileReader();r.onload=ev=>{rdoFotos.push({name:f.name,data:ev.target.result});renderFotoGrid();};r.readAsDataURL(f);});e.target.value='';}
-function saveRDO(status){
+async function saveRDO(status){
   const oId=document.getElementById('rdo-obra').value;if(!oId){toast('⚠️','Selecione uma obra!');return;}
   const data=document.getElementById('rdo-data').value;if(!data){toast('⚠️','Informe a data!');return;}
   const prev=0;
@@ -4421,18 +4424,58 @@ function saveRDO(status){
   const obs=document.getElementById('rdo-obs').value.trim();
   const mat=document.getElementById('rdo-mat').value.trim();
   const idx=DB.rdos.findIndex(r=>r.obraId===oId&&r.data===data);
-  // Se estamos editando um RDO existente via carregarRDO, usar o id salvo
   const editingId=window._rdoEditId||null;
   const existingById=editingId?DB.rdos.find(x=>x.id===editingId):null;
-  const rdo={id:existingById?existingById.id:(idx>=0?DB.rdos[idx].id:nid()),obraId:oId,data,clima:rdoClima,prev,real,serv,obs,mat,status,fotos:rdoFotos.map(f=>({name:f.name,data:f.data,desc:f.desc||''}))};
+  const rdoId=existingById?existingById.id:(idx>=0?DB.rdos[idx].id:uuidv4());
+
+  // Upload fotos para Supabase Storage e converter base64 → URL
+  const fotosFinais=[];
+  for(const f of rdoFotos){
+    if(f.data&&f.data.startsWith('data:')){
+      // Base64 — fazer upload
+      if(supa&&_empresaId){
+        try{
+          const ext=f.name?.split('.').pop()||'jpg';
+          const path=`${_empresaId}/rdos/${rdoId}/${Date.now()}_${Math.random().toString(36).substr(2,6)}.${ext}`;
+          const base64=f.data.split(',')[1];
+          const byteStr=atob(base64);
+          const ab=new ArrayBuffer(byteStr.length);
+          const ia=new Uint8Array(ab);
+          for(let i=0;i<byteStr.length;i++)ia[i]=byteStr.charCodeAt(i);
+          const blob=new Blob([ab],{type:f.data.split(';')[0].split(':')[1]||'image/jpeg'});
+          const {error:upErr}=await supa.storage.from('drive-obras').upload(path,blob,{upsert:true});
+          if(!upErr){
+            const {data:urlData}=supa.storage.from('drive-obras').getPublicUrl(path);
+            fotosFinais.push({name:f.name,url:urlData.publicUrl,desc:f.desc||''});
+          } else {
+            console.error('Upload foto RDO erro:',upErr.message);
+            fotosFinais.push({name:f.name,data:f.data,desc:f.desc||''});
+          }
+        }catch(e){
+          console.error('Upload foto RDO exception:',e);
+          fotosFinais.push({name:f.name,data:f.data,desc:f.desc||''});
+        }
+      } else {
+        fotosFinais.push({name:f.name,data:f.data,desc:f.desc||''});
+      }
+    } else if(f.url){
+      // Já é URL do Storage
+      fotosFinais.push({name:f.name,url:f.url,desc:f.desc||''});
+    } else {
+      fotosFinais.push(f);
+    }
+  }
+
+  const rdo={id:rdoId,obraId:oId,data,clima:rdoClima,prev,real,serv,obs,mat,status,fotos:fotosFinais,_supa:true};
+  // Fotos para salvar no Supabase (sem base64, só URLs)
+  const fotosParaSupa=fotosFinais.map(f=>({name:f.name,url:f.url||'',desc:f.desc||''}));
+
   if(idx>=0){
     DB.rdos[idx]=rdo;
-    supaUpdate('rdos',rdo.id,{obra_id:rdo.obraId,data:rdo.data,clima:rdo.clima,previsto:rdo.prev,realizado:rdo.real,servicos:rdo.serv,obs:rdo.obs,materiais:rdo.mat,status:rdo.status});
+    supaUpdate('rdos',rdo.id,{obra_id:rdo.obraId,data:rdo.data,clima:rdo.clima,previsto:rdo.prev,realizado:rdo.real,servicos:rdo.serv,obs:rdo.obs,materiais:rdo.mat,status:rdo.status,fotos:JSON.stringify(fotosParaSupa)});
   } else {
-    if(!rdo.id||typeof rdo.id!=='string'||!rdo.id.includes('-')) rdo.id=uuidv4();
-    rdo._supa=true;
     DB.rdos.push(rdo);
-    supaInsert('rdos',{id:rdo.id,obra_id:rdo.obraId,data:rdo.data,clima:rdo.clima,previsto:rdo.prev,realizado:rdo.real,servicos:rdo.serv,obs:rdo.obs,materiais:rdo.mat,status:rdo.status});
+    supaInsert('rdos',{id:rdo.id,obra_id:rdo.obraId,data:rdo.data,clima:rdo.clima,previsto:rdo.prev,realizado:rdo.real,servicos:rdo.serv,obs:rdo.obs,materiais:rdo.mat,status:rdo.status,fotos:JSON.stringify(fotosParaSupa)});
   }
   save();renderRDOHist();
   window._rdoEditId=null;
@@ -7976,7 +8019,7 @@ function pBar(doc, x, y, w, h, pct, _color) {
 // 1. RDO — Relatorio Diario de Obra
 // ─────────────────────────────────────────────────────────────────
 
-function gerarRDOPDF(rdo) {
+async function gerarRDOPDF(rdo) {
   if (!rdo) { toast('⚠️', 'Sem RDO selecionado!'); return; }
   const doc = new jsPDF();
   const W = doc.internal.pageSize.getWidth();
@@ -8151,33 +8194,57 @@ function gerarRDOPDF(rdo) {
   // REGISTRO FOTOGRAFICO
   // ═══════════════════════════════════════════════════════════════
   if (rdo.fotos && rdo.fotos.length) {
+    // Pré-carregar fotos (converter URL para base64 se necessário)
+    const fotosCarregadas = [];
+    for (const foto of rdo.fotos) {
+      const imgSrc = foto.data || foto.url || '';
+      if (!imgSrc) { fotosCarregadas.push(null); continue; }
+      if (imgSrc.startsWith('data:')) {
+        fotosCarregadas.push(imgSrc);
+      } else {
+        // URL — carregar como Image e converter para base64
+        try {
+          const imgData = await new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width; canvas.height = img.height;
+              canvas.getContext('2d').drawImage(img, 0, 0);
+              resolve(canvas.toDataURL('image/jpeg', 0.85));
+            };
+            img.onerror = () => reject(new Error('Falha ao carregar'));
+            img.src = imgSrc;
+          });
+          fotosCarregadas.push(imgData);
+        } catch (e) { fotosCarregadas.push(null); }
+      }
+    }
+
     checkPage(60);
     y = pSec(doc, y, 'Registro Fotografico (' + rdo.fotos.length + ' foto' + (rdo.fotos.length > 1 ? 's' : '') + ')');
     const cols = 3, imgW = (CW - 6) / 3, imgH = 44, gapF = 3;
     let photoY = y;
     rdo.fotos.forEach((foto, i) => {
-      if (!foto.data) return;
+      const imgData = fotosCarregadas[i];
+      if (!imgData) return;
       const col = i % cols;
       if (col === 0 && i > 0) photoY += imgH + 12;
       if (photoY + imgH > 268) {
         doc.addPage(); photoY = pHdr(doc, 'Relatorio Diario de Obra', (obra?.nome||'-') + '  -  ' + fmtDt(rdo.data)) + 8;
       }
       const x = M + col * (imgW + gapF);
-      // Sombra sutil
       doc.setFillColor(230, 232, 236); doc.rect(x + 0.5, photoY + 0.5, imgW, imgH, 'F');
-      // Container branco
       doc.setFillColor(255, 255, 255); doc.rect(x, photoY, imgW, imgH, 'F');
       doc.setDrawColor(...PX.silver); doc.setLineWidth(0.2); doc.rect(x, photoY, imgW, imgH, 'S');
-      try { doc.addImage(foto.data, 'JPEG', x + 0.8, photoY + 0.8, imgW - 1.6, imgH - 1.6, '', 'FAST'); }
+      try { doc.addImage(imgData, 'JPEG', x + 0.8, photoY + 0.8, imgW - 1.6, imgH - 1.6, '', 'FAST'); }
       catch (e) {
         doc.setFontSize(7); doc.setTextColor(...PX.gray);
         doc.text('[Foto ' + (i + 1) + ']', x + imgW / 2, photoY + imgH / 2, { align: 'center' });
       }
-      // Badge numero
       doc.setFillColor(...PX.navy); doc.roundedRect(x + 2, photoY + 2, 11, 5, 1, 1, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(5.5); doc.setTextColor(255, 255, 255);
       doc.text('#' + String(i + 1).padStart(2, '0'), x + 7.5, photoY + 5.5, { align: 'center' });
-      // Legenda
       doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...PX.ink);
       const fLabel = (foto.desc || foto.name || 'Foto ' + (i + 1)).substring(0, 32);
       doc.text(fLabel, x + imgW / 2, photoY + imgH + 5, { align: 'center' });
@@ -10681,7 +10748,7 @@ function pcInjetarDados(d, obraId){
   // Mapear dados da API para o formato interno
   if(d.etapas)   DB.etapas   = d.etapas.map(r=>({id:r.id,obraId:obraId,nome:r.nome,status:r.status,pct:r.pct,resp:r.responsavel,inicio:r.inicio,fim:r.fim,sp:r.sp||0,wp:r.wp||0,_supa:true}));
   if(d.lancs)    DB.lancs    = d.lancs.map(r=>({id:r.id,obraId:obraId,tipo:r.tipo,desc:r.descricao||r.desc,cat:r.categoria||r.cat,cc:r.centro_custo||r.cc,valor:Number(r.valor||0),data:r.data,forn:r.fornecedor||r.forn,nf:r.nota_fiscal||r.nf,_supa:true}));
-  if(d.rdos)     DB.rdos     = d.rdos.map(r=>({id:r.id,obraId:obraId,data:r.data,clima:r.clima,prev:r.previsto||r.prev,real:r.realizado||r.real,serv:r.servicos||r.serv,obs:r.obs,mat:r.materiais||r.mat,status:r.status,fotos:[],_supa:true}));
+  if(d.rdos)     DB.rdos     = d.rdos.map(r=>({id:r.id,obraId:obraId,data:r.data,clima:r.clima,prev:r.previsto||r.prev,real:r.realizado||r.real,serv:r.servicos||r.serv,obs:r.obs,mat:r.materiais||r.mat,status:r.status,fotos:r.fotos||[],_supa:true}));
   if(d.estoque)  DB.estoque  = d.estoque.map(r=>({id:r.id,material:r.material,un:r.unidade,qtd:0,min:Number(r.estoque_min||0),preco:Number(r.preco||0),forn:r.fornecedor,_supa:true}));
   if(d.movs)     DB.movs     = d.movs.map(r=>({id:r.id,estId:r.estoque_id,obraId:obraId,tipo:r.tipo,qtd:Number(r.quantidade||0),data:r.data,_supa:true}));
   if(d.ncs)      DB.ncs      = d.ncs.map(r=>({id:r.id,numero:r.numero,obraId:obraId,etapa:r.etapa,desc:r.descricao||r.desc,grau:r.grau,prazo:r.prazo,resp:r.responsavel,status:r.status,acao:r.acao,_supa:true}));
