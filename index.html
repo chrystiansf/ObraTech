@@ -5157,8 +5157,8 @@ function renderCadastros(){
       ? arr.map((x,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
           <span style="font-size:13px">${icon}</span>
           <span style="flex:1;font-size:12px;color:var(--txt)">${x}</span>
-          ${(padroes&&i<padroes)?'<span style="font-size:9px;color:var(--txt3);background:var(--bg3);padding:1px 5px;border-radius:3px">padrão</span>':''}
-          <button class="btn sm ico" onclick="cadastroDel('${arrKey}',${i})" ${(padroes&&i<padroes)?'disabled style="opacity:.3" title="Categoria padrão"':''}>🗑️</button>
+          <button class="btn sm ico" onclick="cadastroEdit('${arrKey}',${i})" title="Editar">✏️</button>
+          <button class="btn sm ico" onclick="cadastroDel('${arrKey}',${i})" title="Excluir">🗑️</button>
         </div>`).join('')
       : `<div class="t-empty" style="padding:16px 0">Nenhum cadastrado ainda.</div>`;
   };
@@ -5186,9 +5186,43 @@ function cadastroSave(tipo){
   inp.value='';
   toast('✅',`"${v}" adicionado!`);
 }
+function cadastroEdit(arrKey,idx){
+  const antigo=DB[arrKey][idx];
+  const novo=prompt('Renomear "'+antigo+'" para:',antigo);
+  if(!novo||!novo.trim()||novo.trim()===antigo)return;
+  const novoNome=novo.trim();
+  if(DB[arrKey].includes(novoNome)){toast('⚠️','"'+novoNome+'" já existe!');return;}
+  DB[arrKey][idx]=novoNome;
+  // Atualizar lançamentos que usam o nome antigo
+  if(arrKey==='categorias'){
+    DB.lancs.forEach(l=>{if(l.cat===antigo)l.cat=novoNome;});
+    DB.contratos.forEach(c=>{if(c.cat===antigo)c.cat=novoNome;});
+    // Atualizar no Supabase
+    if(supa&&_empresaId){
+      supa.from('lancamentos').update({categoria:novoNome}).eq('empresa_id',_empresaId).eq('categoria',antigo).then(()=>{});
+      supa.from('contratos').update({categoria:novoNome}).eq('empresa_id',_empresaId).eq('categoria',antigo).then(()=>{});
+      supa.from('categorias').update({nome:novoNome}).eq('empresa_id',_empresaId).eq('nome',antigo).then(()=>{});
+    }
+  } else if(arrKey==='centros'){
+    DB.lancs.forEach(l=>{if(l.cc===antigo)l.cc=novoNome;});
+    if(supa&&_empresaId){
+      supa.from('lancamentos').update({centro_custo:novoNome}).eq('empresa_id',_empresaId).eq('centro_custo',antigo).then(()=>{});
+      supa.from('centros_custo').update({nome:novoNome}).eq('empresa_id',_empresaId).eq('nome',antigo).then(()=>{});
+    }
+  }
+  save();renderCadastros();renderFin();
+  toast('✅','"'+antigo+'" renomeado para "'+novoNome+'"');
+}
 function cadastroDel(arrKey,idx){
   if(!confirm(`Excluir "${DB[arrKey][idx]}"?`))return;
-  DB[arrKey].splice(idx,1);save();renderCadastros();toast('🗑️','Excluído.');
+  const nome=DB[arrKey][idx];
+  DB[arrKey].splice(idx,1);save();renderCadastros();
+  // Deletar no Supabase
+  if(supa&&_empresaId){
+    const tabela=arrKey==='categorias'?'categorias':'centros_custo';
+    supa.from(tabela).delete().eq('empresa_id',_empresaId).eq('nome',nome).then(()=>{});
+  }
+  toast('🗑️','Excluído.');
 }
 // Adiciona inline direto do modal de lançamento
 function cadastroAddInline(tipo,selId){
