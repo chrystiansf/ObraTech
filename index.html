@@ -8101,17 +8101,18 @@ function exportFinPDF() {
 
   // ── Resumo por categoria
   y = pSec(doc, y, 'Resumo por Categoria');
+  const m2Obra = obraFiltro ? Number(obraFiltro.m2||0) : DB.obras.reduce((a,o)=>a+Number(o.m2||0),0);
   const catsData = [...new Set(lans.filter(l=>l.tipo==='Despesa').map(l => l.cat||'Sem Categoria'))].map(cat => {
     const d2 = lans.filter(l => l.cat===cat && l.tipo==='Despesa').reduce((a,l)=>a+Number(l.valor),0);
-    const qtd = lans.filter(l => l.cat===cat && l.tipo==='Despesa').length;
-    return {cat, d2, qtd};
+    const custoM2 = m2Obra>0 ? d2/m2Obra : 0;
+    return {cat, d2, custoM2};
   }).sort((a,b) => b.d2 - a.d2);
   doc.autoTable({
     startY: y,
-    head: [['Categoria', 'Valor (R$)', 'Qtd', '% do Total']],
+    head: [['Categoria', 'Valor (R$)', 'R$/m²', '% do Total']],
     body: [
-      ...catsData.map(c => [c.cat, fmtR(c.d2), c.qtd, dep>0 ? (c.d2/dep*100).toFixed(2)+'%' : '0.00%']),
-      ['TOTAL GERAL', fmtR(dep), nDep, '100.00%']
+      ...catsData.map(c => [c.cat, fmtR(c.d2), m2Obra>0 ? fmtR(c.custoM2) : '—', dep>0 ? (c.d2/dep*100).toFixed(2)+'%' : '0.00%']),
+      ['TOTAL GERAL', fmtR(dep), m2Obra>0 ? fmtR(dep/m2Obra) : '—', '100.00%']
     ],
     theme: 'striped',
     headStyles: hStyle(),
