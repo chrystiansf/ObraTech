@@ -8487,60 +8487,53 @@ function exportFinPDF() {
   });
   if (!lans.length) { toast('⚠️', 'Nenhum lancamento nos filtros atuais!'); return; }
 
-  const rec   = lans.filter(l => l.tipo==='Receita').reduce((a,l) => a+Number(l.valor), 0);
   const dep   = lans.filter(l => l.tipo==='Despesa').reduce((a,l) => a+Number(l.valor), 0);
-  const saldo = rec - dep;
-  const nRec  = lans.filter(l => l.tipo==='Receita').length;
   const nDep  = lans.filter(l => l.tipo==='Despesa').length;
+  const nTotal = lans.length;
 
   const doc = new jsPDF();
-  let y = pHdr(doc, 'Demonstrativo Financeiro', lans.length + ' lancamentos   —   ' + new Date().toLocaleDateString('pt-BR'));
+  let y = pHdr(doc, 'Relatorio Financeiro de Obra', nTotal + ' lancamentos   —   ' + new Date().toLocaleDateString('pt-BR'));
   y += 4;
 
   // ── 3 KPIs
   const cw = 62, ch = 24, gap = 2;
-  pKpi(doc, 9,           y, cw, ch, 'Total de Receitas', fmtR(rec),   nRec+' lancamentos');
-  pKpi(doc, 9+cw+gap,    y, cw, ch, 'Total de Despesas', fmtR(dep),   nDep+' lancamentos');
-  pKpi(doc, 9+2*(cw+gap),y, cw, ch, 'Saldo do Periodo',  fmtR(saldo), saldo>=0 ? 'Resultado positivo' : 'Resultado negativo');
+  pKpi(doc, 9,           y, cw, ch, 'Total de Despesas', fmtR(dep),   nDep+' lancamentos');
+  const obraFiltro = _finFiltros.obra ? DB.obras.find(o=>_finFiltros.obra.has(String(o.id))) : null;
+  const orc = obraFiltro ? obraFiltro.orc||0 : DB.obras.reduce((a,o)=>a+Number(o.orc||0),0);
+  const saldoOrc = orc - dep;
+  pKpi(doc, 9+cw+gap,    y, cw, ch, 'Orcamento', fmtR(orc),  orc>0 ? 'previsto' : 'nao informado');
+  pKpi(doc, 9+2*(cw+gap),y, cw, ch, 'Saldo Orcamentario',  fmtR(saldoOrc), saldoOrc>=0 ? 'Dentro do orcado' : 'Acima do orcado');
   y += ch + 8;
 
   // ── Resumo por categoria
   y = pSec(doc, y, 'Resumo por Categoria');
-  const cats = [...new Set(lans.map(l => l.cat||'Sem Categoria'))].sort();
+  const cats = [...new Set(lans.filter(l=>l.tipo==='Despesa').map(l => l.cat||'Sem Categoria'))].sort();
   doc.autoTable({
     startY: y,
-    head: [['Categoria', 'Receitas (R$)', 'Despesas (R$)', 'Saldo (R$)', '% Desp.']],
+    head: [['Categoria', 'Valor (R$)', 'Qtd', '% do Total']],
     body: [
       ...cats.map(cat => {
-        const r  = lans.filter(l => l.cat===cat && l.tipo==='Receita').reduce((a,l)=>a+Number(l.valor),0);
         const d2 = lans.filter(l => l.cat===cat && l.tipo==='Despesa').reduce((a,l)=>a+Number(l.valor),0);
-        return [cat, fmtR(r), fmtR(d2), fmtR(r-d2), dep>0 ? Math.round(d2/dep*100)+'%' : '0%'];
+        const qtd = lans.filter(l => l.cat===cat && l.tipo==='Despesa').length;
+        return [cat, fmtR(d2), qtd, dep>0 ? Math.round(d2/dep*100)+'%' : '0%'];
       }),
-      ['TOTAL GERAL', fmtR(rec), fmtR(dep), fmtR(saldo), '100%']
+      ['TOTAL GERAL', fmtR(dep), nDep, '100%']
     ],
     theme: 'striped',
     headStyles: hStyle(),
     bodyStyles: bStyle(),
     alternateRowStyles: altRow(),
     columnStyles: {
-      0: { cellWidth: 68 },
-      1: { cellWidth: 34, halign: 'right' },
-      2: { cellWidth: 34, halign: 'right' },
-      3: { cellWidth: 34, halign: 'right', fontStyle: 'bold' },
-      4: { cellWidth: 22, halign: 'center' }
+      0: { cellWidth: 80 },
+      1: { cellWidth: 40, halign: 'right', fontStyle: 'bold' },
+      2: { cellWidth: 25, halign: 'center' },
+      3: { cellWidth: 30, halign: 'center' }
     },
     didParseCell: (d) => {
-      if (d.section === 'body') {
-        if (d.column.index === 3) {
-          const raw = typeof d.cell.raw === 'number' ? d.cell.raw
-            : parseFloat((d.cell.raw||'').toString().replace(/[^0-9\-.,]/g,'').replace(',','.')) || 0;
-          d.cell.styles.textColor = raw < 0 ? PX.red : PX.green;
-        }
-        if (d.row.index === cats.length) {
-          d.cell.styles.fillColor   = PX.navy;
-          d.cell.styles.textColor   = [255,255,255];
-          d.cell.styles.fontStyle   = 'bold';
-        }
+      if (d.section === 'body' && d.row.index === cats.length) {
+        d.cell.styles.fillColor   = PX.navy;
+        d.cell.styles.textColor   = [255,255,255];
+        d.cell.styles.fontStyle   = 'bold';
       }
     },
     margin: { left: 9, right: 9 }
@@ -8548,20 +8541,20 @@ function exportFinPDF() {
   y = doc.lastAutoTable.finalY + 9;
 
   // ── Lançamentos detalhados
-  if (y > 215) { doc.addPage(); y = pHdr(doc, 'DRE — Lancamentos Detalhados', 'Continuacao') + 8; }
+  if (y > 215) { doc.addPage(); y = pHdr(doc, 'Relatorio Financeiro — Lancamentos', 'Continuacao') + 8; }
   y = pSec(doc, y, 'Lancamentos Detalhados');
   doc.autoTable({
     startY: y,
-    head: [['Data', 'Descricao', 'Obra', 'Categoria', 'Tipo', 'Valor (R$)']],
-    body: lans.slice().sort((a,b) => b.data.localeCompare(a.data)).map(l => {
+    head: [['Data', 'Descricao', 'Obra', 'Categoria', 'Fornecedor', 'Valor (R$)']],
+    body: lans.filter(l=>l.tipo==='Despesa').sort((a,b) => b.data.localeCompare(a.data)).map(l => {
       const o = DB.obras.find(x => x.id == l.obraId);
       return [
         fmtDt(l.data),
-        (l.desc||'—').substring(0,42),
-        (o?.nome||'—').substring(0,20),
-        (l.cat||'—'),
-        l.tipo,
-        (l.tipo==='Despesa' ? '- ' : '+ ') + fmtR(Number(l.valor))
+        (l.desc||'—').substring(0,40),
+        (o?.nome||'—').substring(0,18),
+        (l.cat||'—').substring(0,18),
+        (l.forn||'—').substring(0,18),
+        fmtR(Number(l.valor))
       ];
     }),
     theme: 'striped',
@@ -8569,20 +8562,12 @@ function exportFinPDF() {
     bodyStyles: bStyle(),
     alternateRowStyles: altRow(),
     columnStyles: {
-      0: { cellWidth: 22, halign: 'center' },
-      1: { cellWidth: 62 },
-      2: { cellWidth: 30 },
-      3: { cellWidth: 30 },
-      4: { cellWidth: 22, halign: 'center' },
-      5: { cellWidth: 26, halign: 'right', fontStyle: 'bold' }
-    },
-    didParseCell: (d) => {
-      if (d.section === 'body') {
-        if (d.column.index === 5)
-          d.cell.styles.textColor = (d.cell.text[0]||'').startsWith('-') ? PX.red : PX.green;
-        if (d.column.index === 4)
-          d.cell.styles.textColor = d.cell.text[0]==='Despesa' ? PX.red : PX.green;
-      }
+      0: { cellWidth: 26, halign: 'center' },
+      1: { cellWidth: 52 },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 28 },
+      4: { cellWidth: 28 },
+      5: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
     },
     margin: { left: 9, right: 9 }
   });
