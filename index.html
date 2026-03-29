@@ -6501,8 +6501,8 @@ function orcGerarPDF(){
   const doc=new jsPDF();
   const pw=doc.internal.pageSize.getWidth();
   const ph=doc.internal.pageSize.getHeight();
-  const accent=[26,122,58]; // verde escuro
-  const accentHex='#1a7a3a';
+  const accent=corEmpresa();
+  const accentHex=_empresaCor||'#0A193C';
   let totalGeral=0;
 
   // ── HEADER
