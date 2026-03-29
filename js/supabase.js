@@ -874,7 +874,7 @@ function iniciarRealtime(){
   const ch=supa.channel('obratech-realtime-'+eid);
   tabelas.forEach(t=>{
     ch.on('postgres_changes',{event:'*',schema:'public',table:t,filter:`empresa_id=eq.${eid}`},
-      ()=>sync(t));
+      ()=>debounce('rt_'+t,()=>sync(t),800));
   });
   ch.subscribe((status)=>{
     if(status==='SUBSCRIBED') console.log('✓ Realtime ativo em',tabelas.length,'tabelas');

@@ -74,7 +74,7 @@ function _atualizarSidebarEmpresa(){
   if(nameEl) nameEl.textContent=nome;
   const logoEl=document.getElementById('sb-empresa-logo-el');
   if(logoEl&&_empresaLogo){
-    logoEl.innerHTML='<img src="'+_empresaLogo+'" style="width:100%;height:100%;object-fit:contain">';
+    const lImg=document.createElement('img');lImg.src=_empresaLogo;lImg.style.cssText='width:100%;height:100%;object-fit:contain';logoEl.innerHTML='';logoEl.appendChild(lImg);
   } else if(logoEl&&nome){
     logoEl.textContent=nome.substring(0,2).toUpperCase();
   }

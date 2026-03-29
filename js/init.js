@@ -66,7 +66,7 @@ async function initObraTech(){
         if(!session){
           if(tentativa<3){
             // Mobile pode demorar para restaurar sessão — tentar novamente
-            await new Promise(r=>setTimeout(r,600*tentativa));
+            await new Promise(r=>setTimeout(r,1500*tentativa));
             return _validarSessao(tentativa+1);
           }
           // Sessão expirou após 3 tentativas

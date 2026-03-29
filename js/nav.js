@@ -89,7 +89,7 @@ function updateSbObra(){
   if(DB.user.nome){
     const avEl=document.getElementById('user-av');
     if(avEl){
-      if(DB.user.foto) avEl.innerHTML=`<img src="${DB.user.foto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      if(DB.user.foto){const img=document.createElement('img');img.src=DB.user.foto;img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:50%';avEl.innerHTML='';avEl.appendChild(img);}
       else avEl.textContent=DB.user.ini||DB.user.nome?.charAt(0)||'?';
     }
     document.getElementById('user-name').textContent=DB.user.nome;

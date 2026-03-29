@@ -15,3 +15,10 @@ function hexToRgb(hex){
 }
 // Retorna a cor primaria da empresa como RGB array
 function corEmpresa(){return hexToRgb(_empresaCor||'#0A193C');}
+
+// Sanitizar HTML para prevenir XSS
+function escHtml(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');}
+
+// Debounce genérico
+let _debounceTimers={};
+function debounce(key,fn,ms){clearTimeout(_debounceTimers[key]);_debounceTimers[key]=setTimeout(fn,ms||300);}
