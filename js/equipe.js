@@ -203,7 +203,7 @@ function renderPontos(){
       </tr>`;
     }).join('')+'</table>';
 }
-function delPonto(id){if(!confirm('Excluir presença?'))return;DB.pontos=DB.pontos.filter(p=>String(p.id)!==String(id));save();renderPontos();toast('🗑️','Removido.');}
+function delPonto(id){if(!confirm('Excluir presença?'))return;if(typeof id==='string'&&id.includes('-'))supaDelete('pontos',id);DB.pontos=DB.pontos.filter(p=>String(p.id)!==String(id));save();renderPontos();toast('🗑️','Removido.');}
 
 function calcFolha(){
   const de=document.getElementById('fol-de').value;

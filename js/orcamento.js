@@ -218,12 +218,25 @@ function _orcKey(){
   return sel?.value||'';
 }
 
-function _orcGet(obraId){
+async function _orcGet(obraId){
   if(!obraId) return [];
   if(!_orcDados[obraId]){
-    // Try load from localStorage
-    const saved=localStorage.getItem('orc_'+obraId);
-    if(saved){try{_orcDados[obraId]=JSON.parse(saved);}catch(e){}}
+    // 1. Tentar carregar do Supabase primeiro
+    if(supa&&_empresaId){
+      try{
+        const {data}=await supa.from('orcamento_itens').select('dados').eq('empresa_id',_empresaId).eq('obra_id',obraId).maybeSingle();
+        if(data&&data.dados){
+          _orcDados[obraId]=data.dados;
+          localStorage.setItem('orc_'+obraId,JSON.stringify(data.dados));
+        }
+      }catch(e){console.warn('Erro carregar orcamento Supabase:',e.message);}
+    }
+    // 2. Fallback: localStorage
+    if(!_orcDados[obraId]){
+      const saved=localStorage.getItem('orc_'+obraId);
+      if(saved){try{_orcDados[obraId]=JSON.parse(saved);}catch(e){}}
+    }
+    // 3. Template padrão
     if(!_orcDados[obraId]) _orcDados[obraId]=JSON.parse(JSON.stringify(ORC_TEMPLATE));
   }
   return _orcDados[obraId];
@@ -232,11 +245,23 @@ function _orcGet(obraId){
 function _orcSave(obraId){
   if(!obraId) return;
   localStorage.setItem('orc_'+obraId,JSON.stringify(_orcDados[obraId]));
+  // Sync com Supabase
+  if(supa&&_empresaId){
+    const dados=_orcDados[obraId];
+    supa.from('orcamento_itens').upsert({
+      empresa_id:_empresaId,
+      obra_id:obraId,
+      dados:dados,
+      atualizado_em:new Date().toISOString()
+    },{onConflict:'empresa_id,obra_id'}).then(({error})=>{
+      if(error)console.error('Erro salvar orcamento:',error.message);
+    });
+  }
 }
 
 function orcMudarObra(){renderOrcamento();}
 
-function renderOrcamento(){
+async function renderOrcamento(){
   const sel=document.getElementById('orc-obra-sel');
   if(!sel) return;
   // Fill select
@@ -253,7 +278,7 @@ function renderOrcamento(){
     return;
   }
 
-  const grupos=_orcGet(obraId);
+  const grupos=await _orcGet(obraId);
   if(!_orcExpandidos[obraId]) _orcExpandidos[obraId]=new Set();
   const expandidos=_orcExpandidos[obraId];
 
@@ -338,16 +363,16 @@ function renderOrcamento(){
   content.innerHTML=html;
 }
 
-function orcToggleGrupo(obraId,cod){
+async function orcToggleGrupo(obraId,cod){
   if(!_orcExpandidos[obraId]) _orcExpandidos[obraId]=new Set();
   if(_orcExpandidos[obraId].has(cod)) _orcExpandidos[obraId].delete(cod);
   else _orcExpandidos[obraId].add(cod);
   renderOrcamento();
 }
 
-function orcExpandirTodos(){
+async function orcExpandirTodos(){
   const obraId=_orcKey();if(!obraId) return;
-  const grupos=_orcGet(obraId);
+  const grupos=await _orcGet(obraId);
   _orcExpandidos[obraId]=new Set(grupos.map(g=>g.cod));
   renderOrcamento();
 }
@@ -358,24 +383,24 @@ function orcRecolherTodos(){
   renderOrcamento();
 }
 
-function orcUpdateItem(obraId,gi,si,field,value){
-  const grupos=_orcGet(obraId);
+async function orcUpdateItem(obraId,gi,si,field,value){
+  const grupos=await _orcGet(obraId);
   grupos[gi].subs[si][field]=Number(value)||0;
   _orcSave(obraId);
   renderOrcamento();
 }
 
-function orcRemoverItem(obraId,gi,si){
+async function orcRemoverItem(obraId,gi,si){
   if(!confirm('Remover este subitem?')) return;
-  const grupos=_orcGet(obraId);
+  const grupos=await _orcGet(obraId);
   grupos[gi].subs.splice(si,1);
   _orcSave(obraId);
   renderOrcamento();
   toast('🗑️','Subitem removido.');
 }
 
-function orcRemoverGrupo(obraId,gi){
-  const grupos=_orcGet(obraId);
+async function orcRemoverGrupo(obraId,gi){
+  const grupos=await _orcGet(obraId);
   if(!confirm('Remover o grupo "'+grupos[gi].nome+'" e todos os subitens?')) return;
   grupos.splice(gi,1);
   _orcSave(obraId);
@@ -383,8 +408,8 @@ function orcRemoverGrupo(obraId,gi){
   toast('🗑️','Grupo removido.');
 }
 
-function orcAdicionarItem(obraId,gi){
-  const grupos=_orcGet(obraId);
+async function orcAdicionarItem(obraId,gi){
+  const grupos=await _orcGet(obraId);
   const g=grupos[gi];
   const lastCod=g.subs.length?g.subs[g.subs.length-1].cod:'';
   // Generate next code
@@ -403,12 +428,12 @@ function orcAdicionarItem(obraId,gi){
   toast('✅','Subitem adicionado.');
 }
 
-function orcAdicionarGrupo(){
+async function orcAdicionarGrupo(){
   const obraId=_orcKey();
   if(!obraId){toast('⚠️','Selecione uma obra.');return;}
   const nome=prompt('Nome do novo grupo (ex: LIMPEZA FINAL):');
   if(!nome) return;
-  const grupos=_orcGet(obraId);
+  const grupos=await _orcGet(obraId);
   const nextCod=String(Math.max(...grupos.map(g=>parseInt(g.cod)||0),0)+1);
   grupos.push({cod:nextCod,nome:nome.toUpperCase(),subs:[]});
   _orcSave(obraId);
@@ -416,10 +441,10 @@ function orcAdicionarGrupo(){
   toast('✅','Grupo adicionado.');
 }
 
-function orcGerarPDF(){
+async function orcGerarPDF(){
   const obraId=_orcKey();
   if(!obraId){toast('⚠️','Selecione uma obra.');return;}
-  const grupos=_orcGet(obraId);
+  const grupos=await _orcGet(obraId);
   const obra=DB.obras.find(o=>String(o.id)===String(obraId));
   if(!obra){toast('⚠️','Obra não encontrada.');return;}
 
@@ -579,10 +604,10 @@ function orcGerarPDF(){
   toast('📄','Orçamento PDF gerado com sucesso!');
 }
 
-function orcGerarExcel(){
+async function orcGerarExcel(){
   const obraId=_orcKey();
   if(!obraId){toast('⚠️','Selecione uma obra.');return;}
-  const grupos=_orcGet(obraId);
+  const grupos=await _orcGet(obraId);
   const obra=DB.obras.find(o=>String(o.id)===String(obraId));
 
   // Filter only items with values

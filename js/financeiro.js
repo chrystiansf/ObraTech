@@ -44,7 +44,11 @@ function cadastroSave(tipo){
   const key=tipo==='centro'?'centros':tipo==='categoria'?'categorias':'fornecedores';
   if(DB[key].includes(v)){toast('⚠️',`"${v}" já existe!`);return;}
   DB[key].push(v);
-  save();renderCadastros();
+  save();
+  // Sync com Supabase
+  const tabela=tipo==='centro'?'centros_custo':'categorias';
+  supaInsert(tabela,{id:uuidv4(),nome:v});
+  renderCadastros();
   document.getElementById(`cad-${tipo}s-form`).style.display='none';
   inp.value='';
   toast('✅',`"${v}" adicionado!`);

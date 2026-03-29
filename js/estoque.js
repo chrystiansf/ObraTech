@@ -256,6 +256,7 @@ function delMov(id){
   if(!confirm(`Excluir ${m.tipo} de ${m.qtd} unidades? O estoque será revertido.`))return;
   const est=DB.estoque.find(x=>x.id===m.estId);
   if(est){est.qtd=m.tipo==='Entrada'?est.qtd-m.qtd:est.qtd+m.qtd;}
+  if(typeof id==='string'&&id.includes('-'))supaDelete('movimentacoes',id);
   DB.movs=DB.movs.filter(x=>x.id!==id);
   save();renderEstoque();toast('🗑️','Movimentação excluída e estoque revertido.');
 }
@@ -276,6 +277,8 @@ function editMov(id){
   m.tipo=nTipo;m.qtd=nQtd;
   const nObs=prompt('Observação (opcional):',m.obs||'');
   m.obs=nObs||m.obs||'';
-  save();renderEstoque();toast('✅','Movimentação atualizada!');
+  save();
+  if(typeof id==='string'&&id.includes('-'))supaUpdate('movimentacoes',id,{tipo:m.tipo,quantidade:m.qtd,obs:m.obs});
+  renderEstoque();toast('✅','Movimentação atualizada!');
 }
 function delMat(id){if(!confirm('Excluir material?'))return;if(typeof id==='string'&&id.includes('-'))supaDelete('estoque',id);DB.estoque=DB.estoque.filter(e=>String(e.id)!==String(id));save();renderEstoque();toast('🗑️','Excluído.');}

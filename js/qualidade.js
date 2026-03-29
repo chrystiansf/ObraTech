@@ -190,5 +190,5 @@ function renderQual(){
     mkChart('ch-qual',{type:'radar',data:{labels:ets.length?ets:['Nenhuma'],datasets:[{label:'% Resolvido',data:ets.length?vals:[100],backgroundColor:CP.grnA,borderColor:CP.grn,borderWidth:2,pointBackgroundColor:CP.grn}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:CP.t,font:{size:10}}}},scales:{r:{grid:{color:CP.g},ticks:{color:CP.t,backdropColor:'transparent',font:{size:9}},pointLabels:{color:CP.t,font:{size:10}}}}}});
   },50);
 }
-function fecharNC(id){const n=DB.ncs.find(x=>x.id===id);if(n){n.status='Fechada';save();renderQual();toast('✅','NC fechada!');}}
+function fecharNC(id){const n=DB.ncs.find(x=>x.id===id);if(n){n.status='Fechada';save();if(typeof id==='string'&&id.includes('-'))supaUpdate('nao_conformidades',id,{status:'Fechada'});renderQual();toast('✅','NC fechada!');}}
 function delNC(id){if(!confirm('Excluir NC?'))return;if(typeof id==='string'&&id.includes('-'))supaDelete('nao_conformidades',id);DB.ncs=DB.ncs.filter(n=>String(n.id)!==String(id));save();renderQual();toast('🗑️','NC excluída.');}
