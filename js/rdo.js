@@ -198,10 +198,10 @@ async function saveRDO(status){
   const serv=document.getElementById('rdo-servicos').value.trim();
   const obs=document.getElementById('rdo-obs').value.trim();
   const mat=document.getElementById('rdo-mat').value.trim();
-  const idx=DB.rdos.findIndex(r=>String(r.obraId)===String(oId)&&r.data===data);
   const editingId=window._rdoEditId||null;
   const existingById=editingId?DB.rdos.find(x=>x.id===editingId):null;
-  const rdoId=existingById?existingById.id:(idx>=0?DB.rdos[idx].id:uuidv4());
+  const rdoId=existingById?existingById.id:uuidv4();
+  const isEdit=!!existingById;
 
   // Upload fotos para Supabase Storage e converter base64 → URL
   const fotosFinais=[];
@@ -247,10 +247,8 @@ async function saveRDO(status){
   const dadosSupa={obra_id:rdo.obraId,data:rdo.data,clima:rdo.clima,previsto:rdo.prev,realizado:rdo.real,servicos:rdo.serv,obs:rdo.obs,materiais:rdo.mat,status:rdo.status};
 
   // Salvar local primeiro (garante dados mesmo offline)
-  if(existingById){
+  if(isEdit){
     Object.assign(existingById,rdo);
-  } else if(idx>=0){
-    DB.rdos[idx]=rdo;
   } else {
     DB.rdos.push(rdo);
   }
@@ -258,16 +256,19 @@ async function saveRDO(status){
 
   // Salvar no Supabase com await (critico para mobile)
   try{
-    // Tentar com fotos primeiro, se falhar tenta sem
+    // Incluir autor do RDO
+    const autor=localStorage.getItem('_ot_nome')||'';
     const dadosComFotos={...dadosSupa,fotos:fotosParaSupa};
-    if(existingById||idx>=0){
+    if(autor) dadosComFotos.autor=autor;
+    if(isEdit){
       await supaUpdate('rdos',rdo.id,dadosComFotos);
     } else {
       const {error}=await supa.from('rdos').insert({id:rdo.id,...dadosComFotos,empresa_id:_empresaId}).select('id').single();
       if(error){
         console.warn('Insert com fotos falhou, tentando sem:',error.message);
-        // Tenta sem campo fotos (coluna pode não existir)
-        await supaInsert('rdos',{id:rdo.id,...dadosSupa});
+        const dadosSem={...dadosSupa};
+        if(autor) dadosSem.autor=autor;
+        await supaInsert('rdos',{id:rdo.id,...dadosSem});
       }
     }
     console.log('✓ RDO salvo no Supabase:',rdo.id);
@@ -305,6 +306,7 @@ function renderRDOHist(){
         <span style="font-weight:600;font-size:12px;min-width:75px">${fmtDt(r.data)}</span>
         <span style="font-size:13px">${climaIco(r.clima)}</span>
         <span style="font-size:11px;color:var(--txt2);flex:1;min-width:60px">${obra?.nome||''}</span>
+        ${r.autor?`<span style="font-size:10px;color:var(--txt3)">por ${r.autor}</span>`:''}
         <span class="b ${r.status==='finalizado'?'bg':'by'}" style="font-size:10px">${r.status==='finalizado'?'✓ Final.':'📝 Rasc.'}</span>
         <div style="display:flex;gap:4px">
           <button class="btn sm ico" onclick="carregarRDO('${r.id}')" title="Editar">✏️</button>
