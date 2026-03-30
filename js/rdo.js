@@ -325,12 +325,7 @@ async function visualizarRDO(id){
   const obra=DB.obras.find(o=>String(o.id)===String(rdo.obraId));
   const nomeArq='RDO_'+(obra?.nome||'obra').replace(/\s/g,'_')+'_'+rdo.data+'.pdf';
 
-  // Gerar PDF em modo preview (não baixa)
-  const doc=await gerarRDOPDF(rdo,{preview:true});
-  if(!doc)return;
-  const blobUrl=doc.output('bloburl');
-
-  // Criar overlay de visualização
+  // Mostrar overlay com loading imediatamente
   let ov=document.getElementById('rdo-preview-overlay');
   if(!ov){
     ov=document.createElement('div');
@@ -338,6 +333,22 @@ async function visualizarRDO(id){
     document.body.appendChild(ov);
   }
   ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:flex;flex-direction:column;align-items:center;padding:12px';
+  ov.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;width:100%;max-width:900px;justify-content:space-between">
+      <span style="font-weight:700;font-size:14px;color:#fff">${fmtDt(rdo.data)} — ${obra?.nome||'Obra'}${rdo.autor?' (por '+rdo.autor+')':''}</span>
+      <button class="btn sm" onclick="this.closest('#rdo-preview-overlay').style.display='none'" style="font-size:12px;background:rgba(255,255,255,.15);color:#fff">✕ Fechar</button>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px">
+      <div style="text-align:center"><div style="font-size:32px;margin-bottom:8px;animation:spin 1s linear infinite">⏳</div>Gerando relatório...</div>
+    </div>
+    <style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>`;
+
+  // Gerar PDF em modo preview (background)
+  await new Promise(r=>setTimeout(r,50));
+  const doc=await gerarRDOPDF(rdo,{preview:true});
+  if(!doc){ov.style.display='none';return;}
+  const blobUrl=doc.output('bloburl');
+
   ov.innerHTML=`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;width:100%;max-width:900px;justify-content:space-between">
       <span style="font-weight:700;font-size:14px;color:#fff">${fmtDt(rdo.data)} — ${obra?.nome||'Obra'}${rdo.autor?' (por '+rdo.autor+')':''}</span>
