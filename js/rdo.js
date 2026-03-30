@@ -244,19 +244,33 @@ async function saveRDO(status){
   const rdo={id:rdoId,obraId:oId,data,clima:rdoClima,prev,real,serv,obs,mat,status,fotos:fotosFinais,_supa:true};
   // Fotos para salvar no Supabase (sem base64, só URLs)
   const fotosParaSupa=fotosFinais.map(f=>({name:f.name,url:f.url||'',desc:f.desc||''}));
-  const dadosSupa={obra_id:rdo.obraId,data:rdo.data,clima:rdo.clima,previsto:rdo.prev,realizado:rdo.real,servicos:rdo.serv,obs:rdo.obs,materiais:rdo.mat,status:rdo.status,fotos:fotosParaSupa};
+  const dadosSupa={obra_id:rdo.obraId,data:rdo.data,clima:rdo.clima,previsto:rdo.prev,realizado:rdo.real,servicos:rdo.serv,obs:rdo.obs,materiais:rdo.mat,status:rdo.status};
 
   // Salvar local primeiro (garante dados mesmo offline)
-  if(idx>=0){ DB.rdos[idx]=rdo; } else { DB.rdos.push(rdo); }
+  if(existingById){
+    Object.assign(existingById,rdo);
+  } else if(idx>=0){
+    DB.rdos[idx]=rdo;
+  } else {
+    DB.rdos.push(rdo);
+  }
   save();renderRDOHist();
 
   // Salvar no Supabase com await (critico para mobile)
   try{
-    if(idx>=0){
-      await supaUpdate('rdos',rdo.id,dadosSupa);
+    // Tentar com fotos primeiro, se falhar tenta sem
+    const dadosComFotos={...dadosSupa,fotos:fotosParaSupa};
+    if(existingById||idx>=0){
+      await supaUpdate('rdos',rdo.id,dadosComFotos);
     } else {
-      await supaInsert('rdos',{id:rdo.id,...dadosSupa});
+      const {error}=await supa.from('rdos').insert({id:rdo.id,...dadosComFotos,empresa_id:_empresaId}).select('id').single();
+      if(error){
+        console.warn('Insert com fotos falhou, tentando sem:',error.message);
+        // Tenta sem campo fotos (coluna pode não existir)
+        await supaInsert('rdos',{id:rdo.id,...dadosSupa});
+      }
     }
+    console.log('✓ RDO salvo no Supabase:',rdo.id);
     toast('☁️','RDO sincronizado!');
   }catch(e){
     console.error('Erro sync RDO:',e);

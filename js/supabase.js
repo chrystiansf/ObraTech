@@ -847,7 +847,7 @@ function iniciarRealtime(){
         etapas:r=>{DB.etapas=r.map(mapEtapa);renderCron&&renderCron();},
         colaboradores:r=>{DB.colabs=r.map(mapColab);renderPaginaAtual&&renderPaginaAtual();fillSelects();},
         lancamentos:r=>{DB.lancs=r.map(mapLanc);renderFin();},
-        rdos:r=>{DB.rdos=r.map(mapRdo);},
+        rdos:r=>{DB.rdos=r.map(mapRdo);renderRDOHist();},
         estoque:r=>{DB.estoque=r.map(mapEstoque);if(document.getElementById('p-estoque')?.style.display!=='none')renderEstoque();},
         movimentacoes:r=>{DB.movs=r.map(mapMov);if(document.getElementById('p-estoque')?.style.display!=='none')renderEstoqueSaldo();},
         contratos:r=>{DB.contratos=r.map(mapContrato);renderContratos();},
