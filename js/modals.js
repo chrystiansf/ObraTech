@@ -954,10 +954,6 @@ async function _refreshLancEtapas(obraVal){
     if(gruposComValor.length){
       gruposComValor.forEach(g=>{
         opts+=`<option value="${g.cod} - ${g.nome}">${g.cod} - ${g.nome}</option>`;
-        // Incluir subitens com valor
-        g.subs.filter(s=>(Number(s.qtd)||0)>0&&(Number(s.unit)||0)>0).forEach(s=>{
-          opts+=`<option value="${s.cod} - ${s.desc}">  ${s.cod} - ${s.desc}</option>`;
-        });
       });
     }
   }
