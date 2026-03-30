@@ -466,11 +466,20 @@ async function orcGerarPDF(){
 
   // ── HEADER
   let y=12;
-  // Logo
+  // Logo — manter proporção original
+  let logoX=9;
   if(_empresaLogo){
-    try{doc.addImage(_empresaLogo,'PNG',9,y,22,22);}catch(e){}
+    try{
+      const props=doc.getImageProperties(_empresaLogo);
+      const ratio=props.width/props.height;
+      const maxH=20,maxW=40;
+      let dw,dh;
+      if(ratio>=1){dw=Math.min(maxW,maxH*ratio);dh=dw/ratio;}
+      else{dh=maxH;dw=dh*ratio;}
+      doc.addImage(_empresaLogo,'PNG',9,y+(22-dh)/2,dw,dh,'','FAST');
+      logoX=9+dw+4;
+    }catch(e){logoX=9;}
   }
-  const logoX=_empresaLogo?35:9;
   doc.setFontSize(18);doc.setFont(undefined,'bold');doc.setTextColor(...accent);
   doc.text('ORÇAMENTO DE OBRA',logoX,y+8);
   doc.setFontSize(10);doc.setFont(undefined,'normal');doc.setTextColor(100,100,100);

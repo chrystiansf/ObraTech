@@ -36,41 +36,71 @@ Object.defineProperty(PX,'dark',{get:function(){return corEmpresa();},enumerable
 function pHdr(doc, title, sub, _accent) {
   title=title||'Relatório'; sub=sub||'';
   const W = doc.internal.pageSize.getWidth();
+  const hdrH = 30;
   const ce = corEmpresa();
   // Fundo com cor da empresa
-  doc.setFillColor(...ce); doc.rect(0, 0, W, 28, 'F');
-  // Linha accent (cor mais clara)
+  doc.setFillColor(...ce); doc.rect(0, 0, W, hdrH, 'F');
+  // Linha accent inferior
   const accentRgb = [Math.min(ce[0]+30,255), Math.min(ce[1]+50,255), Math.min(ce[2]+100,255)];
-  doc.setFillColor(...accentRgb); doc.rect(0, 28, W, 1.2, 'F');
-  // Logo da empresa ou texto fallback
-  let logoX = 9;
+  doc.setFillColor(...accentRgb); doc.rect(0, hdrH, W, 1.2, 'F');
+
+  // Logo — manter proporção original
+  const logoMaxH = 18, logoMaxW = 40;
+  const logoY = (hdrH - logoMaxH) / 2 + 1;
+  let textStartX = 10;
   if (_empresaLogo) {
-    try { doc.addImage(_empresaLogo, 'PNG', 9, 4, 20, 20, '', 'FAST'); logoX = 33; } catch(e) { logoX = 9; }
+    try {
+      // Carregar dimensões reais da imagem
+      const props = doc.getImageProperties(_empresaLogo);
+      const ratio = props.width / props.height;
+      let drawW, drawH;
+      if (ratio >= 1) {
+        // Imagem horizontal — limitar pela largura
+        drawW = Math.min(logoMaxW, logoMaxH * ratio);
+        drawH = drawW / ratio;
+      } else {
+        // Imagem vertical — limitar pela altura
+        drawH = logoMaxH;
+        drawW = drawH * ratio;
+      }
+      const drawY = (hdrH - drawH) / 2 + 0.5;
+      doc.addImage(_empresaLogo, 'PNG', 10, drawY, drawW, drawH, '', 'FAST');
+      textStartX = 10 + drawW + 5;
+    } catch(e) { textStartX = 10; }
   }
-  if (logoX === 9) {
+
+  // Texto ao lado da logo (nome da empresa ou fallback)
+  if (textStartX === 10) {
+    const nomeEmp = localStorage.getItem('_ot_empresa_nome') || 'OBRATECH';
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-    doc.setTextColor(255, 255, 255); doc.text('OBRATECH', 9, 11);
+    doc.setTextColor(255, 255, 255);
+    doc.text(nomeEmp.toUpperCase(), 10, hdrH / 2 - 1);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6);
+    doc.setTextColor(255, 255, 255, 180);
+    doc.text('Emitido em ' + new Date().toLocaleDateString('pt-BR'), 10, hdrH / 2 + 5);
+  } else {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6);
+    doc.setTextColor(255, 255, 255, 180);
+    doc.text('Emitido em ' + new Date().toLocaleDateString('pt-BR'), textStartX, hdrH / 2 + 2);
   }
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5);
-  doc.setTextColor(255, 255, 255, 180);
-  doc.text('SISTEMA DE GESTAO DE OBRAS', logoX, _empresaLogo ? 11 : 17);
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(6);
-  doc.text('Emitido em ' + new Date().toLocaleDateString('pt-BR'), logoX, _empresaLogo ? 17 : 23.5);
+
   // Separador vertical
-  doc.setDrawColor(...accentRgb); doc.setLineWidth(0.5);
-  doc.line(W * 0.42, 6, W * 0.42, 24);
-  // Título
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+  const sepX = W * 0.45;
+  doc.setDrawColor(255, 255, 255, 60); doc.setLineWidth(0.3);
+  doc.line(sepX, 6, sepX, hdrH - 6);
+
+  // Título do relatório (direita)
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
   doc.setTextColor(255, 255, 255);
-  doc.text(title.toUpperCase(), W - 9, 12, { align: 'right' });
+  doc.text(title.toUpperCase(), W - 10, hdrH / 2 - 2, { align: 'right' });
   // Subtítulo
   if (sub) {
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
     doc.setTextColor(255, 255, 255, 180);
-    doc.text(String(sub).substring(0, 70), W - 9, 20, { align: 'right' });
+    doc.text(String(sub).substring(0, 70), W - 10, hdrH / 2 + 5, { align: 'right' });
   }
   doc.setTextColor(...PX.ink); doc.setLineWidth(0.2);
-  return 36;
+  return hdrH + 6;
 }
 
 // ── Rodapé discreto — linha fina + texto cinza pequeno
