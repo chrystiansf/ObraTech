@@ -16,16 +16,17 @@ function renderDemandas(){
   if(statusF) demandas=demandas.filter(d=>d.status===statusF);
   if(priorF) demandas=demandas.filter(d=>d.prioridade===priorF);
 
-  // KPIs
+  // KPIs clicáveis — filtram por status
   const total=DB.demandas?.length||0;
   const pendentes=(DB.demandas||[]).filter(d=>d.status==='pendente').length;
   const andamento=(DB.demandas||[]).filter(d=>d.status==='andamento').length;
   const concluidas=(DB.demandas||[]).filter(d=>d.status==='concluida').length;
+  const kAct=(v)=>statusF===v?'outline:2px solid var(--primary);outline-offset:-2px;border-radius:10px':'';
   document.getElementById('dem-kpis').innerHTML=`
-    <div class="kpi"><div class="kl">📋 Total</div><div class="kv">${total}</div><div class="kd neu">demandas</div></div>
-    <div class="kpi"><div class="kl">⏳ Pendentes</div><div class="kv" style="color:var(--yellow)">${pendentes}</div><div class="kd ${pendentes?'dn':'neu'}">aguardando</div></div>
-    <div class="kpi"><div class="kl">🔄 Em andamento</div><div class="kv" style="color:var(--primary)">${andamento}</div><div class="kd neu">em execução</div></div>
-    <div class="kpi"><div class="kl">✅ Concluídas</div><div class="kv" style="color:var(--green)">${concluidas}</div><div class="kd up">finalizadas</div></div>`;
+    <div class="kpi" onclick="demFiltroKpi('')" style="cursor:pointer;${kAct('')}"><div class="kl">📋 Total</div><div class="kv">${total}</div><div class="kd neu">demandas</div></div>
+    <div class="kpi" onclick="demFiltroKpi('pendente')" style="cursor:pointer;${kAct('pendente')}"><div class="kl">⏳ Pendentes</div><div class="kv" style="color:var(--yellow)">${pendentes}</div><div class="kd ${pendentes?'dn':'neu'}">aguardando</div></div>
+    <div class="kpi" onclick="demFiltroKpi('andamento')" style="cursor:pointer;${kAct('andamento')}"><div class="kl">🔄 Em andamento</div><div class="kv" style="color:var(--primary)">${andamento}</div><div class="kd neu">em execução</div></div>
+    <div class="kpi" onclick="demFiltroKpi('concluida')" style="cursor:pointer;${kAct('concluida')}"><div class="kl">✅ Concluídas</div><div class="kv" style="color:var(--green)">${concluidas}</div><div class="kd up">finalizadas</div></div>`;
 
   const el=document.getElementById('dem-tbl');
   if(!demandas.length){
@@ -82,6 +83,14 @@ function renderDemandas(){
   <div style="display:flex;flex-direction:column;gap:8px">${demCards}</div>`;
 }
 
+function demFiltroKpi(status){
+  const sel=document.getElementById('dem-status-filter');
+  if(sel){
+    sel.value=sel.value===status?'':status;
+  }
+  renderDemandas();
+}
+
 function demMudarStatus(id,status){
   const d=DB.demandas.find(x=>String(x.id)===String(id));
   if(!d) return;
@@ -98,4 +107,3 @@ function delDemanda(id){
   DB.demandas=DB.demandas.filter(x=>String(x.id)!==String(id));
   save();renderDemandas();toast('🗑️','Demanda excluída.');
 }
-
