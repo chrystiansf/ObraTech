@@ -839,7 +839,10 @@
   <div id="comp-panel-cotacoes" style="display:none">
     <div class="card">
       <div class="ch">
-        <div class="ct">Cotacoes por Solicitacao</div>
+        <div>
+          <div class="ct">Cotacoes por Solicitacao</div>
+          <div class="cs">Compare precos de fornecedores e selecione o vencedor</div>
+        </div>
       </div>
       <div id="cot-tbl"></div>
     </div>
@@ -849,7 +852,13 @@
   <div id="comp-panel-pedidos" style="display:none">
     <div class="card">
       <div class="ch">
-        <div class="ct">Pedidos de Compra</div>
+        <div>
+          <div class="ct">Pedidos de Compra</div>
+          <div class="cs">Pedidos sao gerados automaticamente ao aprovar uma solicitacao</div>
+        </div>
+        <div class="ca">
+          <button class="btn sm" onclick="comprasTab('solicitacoes')">Ver Solicitacoes</button>
+        </div>
       </div>
       <div id="ped-tbl"></div>
     </div>

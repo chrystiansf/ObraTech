@@ -73,10 +73,11 @@ function renderSolicitacoes(){
         <td>${STATUS_BADGE[s.status]||STATUS_BADGE.aberta}</td>
         <td style="font-size:11px;color:var(--txt3)">${s.solicitante||'—'}</td>
         <td><div class="ta-actions">
-          ${s.status==='aberta'?`<button class="btn sm" onclick="solMudarStatus('${s.id}','cotando')" title="Enviar para cotacao">Cotar</button>`:''}
+          ${s.status==='aberta'?`<button class="btn sm" onclick="solMudarStatus('${s.id}','cotando');comprasTab('cotacoes')" title="Enviar para cotacao">Cotar</button>`:''}
+          ${s.status==='cotando'?`<button class="btn sm" onclick="comprasTab('cotacoes')" title="Ver cotacoes">Ver Cotacoes</button>`:''}
           ${s.status==='cotando'||s.status==='aberta'?`<button class="btn sm" onclick="solMudarStatus('${s.id}','aprovada')" title="Aprovar" style="color:var(--green)">Aprovar</button>`:''}
           ${s.status==='aprovada'?`<button class="btn sm" onclick="solReceber('${s.id}')" title="Registrar recebimento">Receber</button>`:''}
-          <button class="btn sm ico" onclick="openModal('solicitacao','${s.id}')">✏️</button>
+          <button class="btn sm ico" onclick="openModalSolicitacao('${s.id}')">✏️</button>
           ${s.status!=='recebida'?`<button class="btn sm ico" onclick="solMudarStatus('${s.id}','cancelada')">🗑️</button>`:''}
         </div></td>
       </tr>`;
@@ -175,7 +176,7 @@ function renderCotacoes(){
           <div class="cs">${s.quantidade||'—'} ${s.unidade||'un'} — ${o?.nome||'Sem obra'}</div>
         </div>
         <div class="ca">
-          <button class="btn sm pri" onclick="openModal('cotacao',null,'${s.id}')">+ Cotacao</button>
+          <button class="btn sm pri" onclick="openModalCotacao(null,'${s.id}')">+ Cotacao</button>
           ${cots.length>=2?`<button class="btn sm" onclick="gerarMapaCotacaoPDF('${s.id}')">Mapa PDF</button>`:''}
         </div>
       </div>
