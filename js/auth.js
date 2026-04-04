@@ -1040,22 +1040,41 @@ async function salvarPermissoesCliente(clienteId){
   }
 }
 
-// ── Pull-to-refresh no celular ─────────────────────────────
+// ── Pull-to-refresh no celular (estilo grandes apps) ───────
 (function(){
-  let _ptrStartY=0, _ptrEl=null, _ptrAtivo=false;
-  const MIN_PULL=130;      // distância mínima para ativar (era 70)
-  const DEAD_ZONE=20;      // zona morta — ignora movimentos pequenos
-  const MIN_VELOCIDADE=3;  // só ativa se arrastar rápido o suficiente
+  let _ptrStartY=0, _ptrEl=null, _ptrAtivo=false, _ptrStartTime=0;
+  const MIN_PULL=160;       // distância mínima para ativar (apps usam 150-180px)
+  const DEAD_ZONE=40;       // zona morta grande — ignora scroll normal
+  const MIN_DURACAO=400;    // deve puxar por pelo menos 400ms (evita flick rápido)
+
+  function _ptrScrollTop(){
+    // Verificar scroll do container principal (#content) E do window
+    const content=document.getElementById('content');
+    const contentScroll=content?content.scrollTop:0;
+    return Math.max(window.scrollY, contentScroll);
+  }
+
+  function _ptrPodeAtivar(e){
+    // NÃO ativar se:
+    if(e.touches.length>1) return false;                    // multi-touch
+    if(_ptrScrollTop()>5) return false;                     // não está no topo
+    const tag=e.target.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return false; // em formulário
+    if(e.target.closest('.mo,.ov,#modal-root')) return false;         // em modal
+    if(e.target.closest('.tbl,.card[style*="overflow"]')) return false;// em tabela com scroll
+    if(e.target.closest('[style*="overflow-x"]')) return false;       // scroll horizontal
+    return true;
+  }
 
   document.addEventListener('touchstart',e=>{
-    // Só ativa se estiver no topo da página E toque com 1 dedo
-    if(window.scrollY>5||e.touches.length>1) return;
+    if(!_ptrPodeAtivar(e)) return;
     _ptrStartY=e.touches[0].clientY;
+    _ptrStartTime=Date.now();
     _ptrAtivo=false;
     if(!_ptrEl){
       _ptrEl=document.createElement('div');
       _ptrEl.id='ptr-indicator';
-      _ptrEl.style.cssText='position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-50px);z-index:99999;background:var(--primary);color:#fff;border-radius:0 0 20px 20px;padding:8px 24px;font-size:12px;font-weight:600;transition:transform .15s;pointer-events:none;font-family:Inter,sans-serif';
+      _ptrEl.style.cssText='position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-60px);z-index:99999;background:var(--primary);color:#fff;border-radius:0 0 20px 20px;padding:8px 24px;font-size:12px;font-weight:600;transition:transform .2s ease;pointer-events:none;font-family:Inter,sans-serif;box-shadow:0 4px 12px rgba(0,0,0,.2)';
       _ptrEl.textContent='↓ Puxe para atualizar';
       document.body.appendChild(_ptrEl);
     }
@@ -1063,30 +1082,36 @@ async function salvarPermissoesCliente(clienteId){
 
   document.addEventListener('touchmove',e=>{
     if(!_ptrStartY) return;
+    // Se scrollou para baixo durante o gesto, cancelar
+    if(_ptrScrollTop()>5){_ptrStartY=0;_ptrAtivo=false;return;}
     const dy=e.touches[0].clientY-_ptrStartY;
-    // Zona morta — movimentos pequenos não fazem nada
-    if(dy<DEAD_ZONE){return;}
-    if(dy<0){_ptrStartY=0;return;}
+    if(dy<DEAD_ZONE) return;     // dentro da zona morta — ignorar
+    if(dy<0){_ptrStartY=0;return;} // scroll para cima — cancelar
     _ptrAtivo=true;
     if(_ptrEl){
       const prog=Math.min((dy-DEAD_ZONE)/(MIN_PULL-DEAD_ZONE),1);
-      const offset=-50+prog*62;
+      const offset=-60+prog*72;
       _ptrEl.style.transform=`translateX(-50%) translateY(${offset}px)`;
-      _ptrEl.textContent=dy>=MIN_PULL?'↑ Solte para atualizar':'↓ Continue puxando...';
+      _ptrEl.textContent=dy>=MIN_PULL?'↑ Solte para atualizar':'↓ Puxe para atualizar';
       _ptrEl.style.background=dy>=MIN_PULL?'var(--green)':'var(--primary)';
     }
   },{passive:true});
 
   document.addEventListener('touchend',e=>{
-    if(!_ptrStartY||!_ptrAtivo){_ptrStartY=0;return;}
+    if(!_ptrStartY||!_ptrAtivo){_ptrStartY=0;_ptrAtivo=false;return;}
     const dy=e.changedTouches[0].clientY-_ptrStartY;
+    const duracao=Date.now()-_ptrStartTime;
     _ptrStartY=0;
     _ptrAtivo=false;
     if(_ptrEl){
-      _ptrEl.style.transform='translateX(-50%) translateY(-50px)';
+      _ptrEl.style.transform='translateX(-50%) translateY(-60px)';
       _ptrEl.style.background='var(--primary)';
     }
-    if(dy>=MIN_PULL){ setTimeout(()=>location.reload(),350); }
+    // Só recarrega se puxou longe o suficiente E manteve pressionado tempo suficiente
+    if(dy>=MIN_PULL && duracao>=MIN_DURACAO){
+      if(_ptrEl){_ptrEl.textContent='Atualizando...';_ptrEl.style.transform='translateX(-50%) translateY(0px)';}
+      setTimeout(()=>location.reload(),500);
+    }
   });
 })();
 
