@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════
 // NAV
 // ═══════════════════════════════════════════
-const TITLES={empresa:'Empresa',dashboard:'Dashboard',obras:'Obras',cronograma:'Cronograma',rdo:'RDO Diário',equipe:'Equipe / Folha',estoque:'Estoque',financeiro:'Financeiro',qualidade:'Qualidade',relatorios:'Relatórios',demandas:'Demandas',fornecedores:'Fornecedores',contratos:'Contratos',orcamento:'Orçamento'};
-const NEW_ACTIONS={obras:()=>openMocModal(),cronograma:()=>openModal('etapa'),rdo:null,equipe:()=>{const tercsEl=document.getElementById('t-tercs');if(tercsEl&&tercsEl.style.display!=='none'){openModal('terceirizado')}else{openModal('colab')}},estoque:()=>{estSwTab('catalogo');openModal('material');},financeiro:()=>openModal('lanc'),qualidade:()=>openModal('nc'),contratos:()=>openModal('contrato')};
+const TITLES={empresa:'Empresa',dashboard:'Dashboard',obras:'Obras',cronograma:'Cronograma',rdo:'RDO Diário',equipe:'Equipe / Folha',estoque:'Estoque',financeiro:'Financeiro',qualidade:'Qualidade',relatorios:'Relatórios',demandas:'Demandas',compras:'Compras',fornecedores:'Fornecedores',contratos:'Contratos',orcamento:'Orçamento'};
+const NEW_ACTIONS={obras:()=>openMocModal(),cronograma:()=>openModal('etapa'),rdo:null,equipe:()=>{const tercsEl=document.getElementById('t-tercs');if(tercsEl&&tercsEl.style.display!=='none'){openModal('terceirizado')}else{openModal('colab')}},estoque:()=>{estSwTab('catalogo');openModal('material');},financeiro:()=>openModal('lanc'),qualidade:()=>openModal('nc'),contratos:()=>openModal('contrato'),compras:()=>openModalSolicitacao()};
 
 function goPage(id){
   // Bloquear se usuário não tem permissão para este módulo
@@ -18,7 +18,7 @@ function goPage(id){
   document.querySelector(`.mni[data-p="${id}"]`)?.classList.add('on');
   document.getElementById('ptitle').textContent=TITLES[id]||id;
   updateSbObra();fillSelects();
-  const _renderFns={dashboard:renderDash,obras:renderObras,cronograma:renderCron,rdo:renderRDO,equipe:renderEquipe,estoque:renderEstoque,financeiro:renderFin,qualidade:renderQual,contratos:renderContratos,relatorios:()=>{},demandas:renderDemandas,fornecedores:renderFornecedores,empresa:renderClientes,orcamento:renderOrcamento};
+  const _renderFns={dashboard:renderDash,obras:renderObras,cronograma:renderCron,rdo:renderRDO,equipe:renderEquipe,estoque:renderEstoque,financeiro:renderFin,qualidade:renderQual,contratos:renderContratos,relatorios:()=>{},demandas:renderDemandas,compras:renderCompras,fornecedores:renderFornecedores,empresa:renderClientes,orcamento:renderOrcamento};
   _renderFns[id]?.();
   window._paginaAtual=id;
 }

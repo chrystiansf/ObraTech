@@ -21,6 +21,7 @@ const MODULOS_SISTEMA=[
   {id:"orcamento",   label:"Orçamento",       ic:"💲"},
   {id:"qualidade",   label:"Qualidade",       ic:"✅"},
   {id:"demandas",    label:"Demandas",        ic:"📋"},
+  {id:"compras",     label:"Compras",         ic:"🛒"},
   {id:"fornecedores",label:"Fornecedores",    ic:"🏭"},
   {id:"empresa",    label:"Empresa",         ic:"🏢"},
   {id:"relatorios",  label:"Relatórios",      ic:"📈"},
@@ -28,9 +29,9 @@ const MODULOS_SISTEMA=[
 
 const PAPEIS_PRESET={
   admin:     MODULOS_SISTEMA.map(m=>m.id),
-  gestor:    ["dashboard","obras","cronograma","rdo","equipe","estoque","financeiro","contratos","orcamento","qualidade","demandas","fornecedores","relatorios"],
-  financeiro:["dashboard","obras","financeiro","contratos","relatorios"],
-  operacional:["dashboard","obras","cronograma","rdo","equipe","estoque","qualidade","demandas"],
+  gestor:    ["dashboard","obras","cronograma","rdo","equipe","estoque","financeiro","contratos","orcamento","compras","qualidade","demandas","fornecedores","relatorios"],
+  financeiro:["dashboard","obras","financeiro","contratos","compras","relatorios"],
+  operacional:["dashboard","obras","cronograma","rdo","equipe","estoque","compras","qualidade","demandas"],
   visualizador:["dashboard","obras","cronograma","rdo"],
 };
 

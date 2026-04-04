@@ -130,6 +130,7 @@
     <div class="ni" data-p="orcamento" draggable="true" onclick="goPage('orcamento')"><span class="ic">💲</span><span class="sb-txt">Orçamento</span></div>
     <div class="ni" data-p="qualidade" draggable="true" onclick="goPage('qualidade')"><span class="ic">✅</span><span class="sb-txt">Qualidade</span></div>
     <div class="ni" data-p="demandas" draggable="true" onclick="goPage('demandas')"><span class="ic">📋</span><span class="sb-txt">Demandas</span></div>
+    <div class="ni" data-p="compras" draggable="true" onclick="goPage('compras')"><span class="ic">🛒</span><span class="sb-txt">Compras</span></div>
     <div class="ni" data-p="fornecedores" draggable="true" onclick="goPage('fornecedores')"><span class="ic">🏭</span><span class="sb-txt">Fornecedores</span></div>
     <div class="ni" data-p="relatorios" draggable="true" onclick="goPage('relatorios')"><span class="ic">📈</span><span class="sb-txt">Relatorios</span></div>
   </nav>
@@ -155,6 +156,7 @@
     <div class="mni-more-item" data-p="contratos" onclick="goPage('contratos');closeMobileMore()"><div class="ic">📑</div><div class="lb">Contratos</div></div>
     <div class="mni-more-item" data-p="orcamento" onclick="goPage('orcamento');closeMobileMore()"><div class="ic">💲</div><div class="lb">Orçamento</div></div>
     <div class="mni-more-item" data-p="demandas" onclick="goPage('demandas');closeMobileMore()"><div class="ic">📋</div><div class="lb">Demandas</div></div>
+    <div class="mni-more-item" data-p="compras" onclick="goPage('compras');closeMobileMore()"><div class="ic">🛒</div><div class="lb">Compras</div></div>
     <div class="mni-more-item" data-p="fornecedores" onclick="goPage('fornecedores');closeMobileMore()"><div class="ic">🏭</div><div class="lb">Fornecedores</div></div>
     <div class="mni-more-item" data-p="relatorios" onclick="goPage('relatorios');closeMobileMore()"><div class="ic">📈</div><div class="lb">Relatórios</div></div>
     <div class="mni-more-item" onclick="closeMobileMore();logout()" style="color:var(--red)"><div class="ic">🚪</div><div class="lb" style="color:var(--red)">Sair</div></div>
@@ -794,6 +796,66 @@
   </div>
 </div>
 
+<!-- COMPRAS -->
+<div class="page" id="p-compras">
+  <div style="display:flex;gap:2px;margin-bottom:13px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);padding:3px;width:fit-content">
+    <button id="comp-tab-solicitacoes" class="btn pri" style="height:28px;font-size:11px" onclick="comprasTab('solicitacoes')">Solicitacoes</button>
+    <button id="comp-tab-cotacoes" class="btn" style="height:28px;font-size:11px" onclick="comprasTab('cotacoes')">Cotacoes</button>
+    <button id="comp-tab-pedidos" class="btn" style="height:28px;font-size:11px" onclick="comprasTab('pedidos')">Pedidos</button>
+  </div>
+
+  <!-- SOLICITACOES -->
+  <div id="comp-panel-solicitacoes">
+    <div class="g g4" style="margin-bottom:13px" id="sol-kpis"></div>
+    <div class="card">
+      <div class="ch">
+        <div class="ct">Solicitacoes de Compra</div>
+        <div class="ca">
+          <select class="sel" id="sol-obra-filter" style="height:34px;font-size:12px;width:160px" onchange="renderSolicitacoes()">
+            <option value="">Todas as obras</option>
+          </select>
+          <select class="sel" id="sol-status-filter" style="height:34px;font-size:12px;width:120px" onchange="renderSolicitacoes()">
+            <option value="">Todos status</option>
+            <option value="aberta">Aberta</option>
+            <option value="cotando">Cotando</option>
+            <option value="aprovada">Aprovada</option>
+            <option value="recebida">Recebida</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+          <select class="sel" id="sol-urg-filter" style="height:34px;font-size:12px;width:120px" onchange="renderSolicitacoes()">
+            <option value="">Todas urgencias</option>
+            <option value="normal">Normal</option>
+            <option value="urgente">Urgente</option>
+            <option value="critico">Critico</option>
+          </select>
+          <button class="btn sm pri" onclick="openModalSolicitacao()">+ Solicitacao</button>
+        </div>
+      </div>
+      <div id="sol-tbl"></div>
+    </div>
+  </div>
+
+  <!-- COTACOES -->
+  <div id="comp-panel-cotacoes" style="display:none">
+    <div class="card">
+      <div class="ch">
+        <div class="ct">Cotacoes por Solicitacao</div>
+      </div>
+      <div id="cot-tbl"></div>
+    </div>
+  </div>
+
+  <!-- PEDIDOS -->
+  <div id="comp-panel-pedidos" style="display:none">
+    <div class="card">
+      <div class="ch">
+        <div class="ct">Pedidos de Compra</div>
+      </div>
+      <div id="ped-tbl"></div>
+    </div>
+  </div>
+</div>
+
 <!-- FORNECEDORES -->
 <div class="page" id="p-fornecedores">
   <div class="g g4" style="margin-bottom:13px" id="forn-kpis"></div>
@@ -1081,6 +1143,7 @@
 <script src="js/contratos.js?v=20260329b"></script>
 <script src="js/orcamento.js?v=20260329b"></script>
 <script src="js/demandas.js?v=20260329b"></script>
+<script src="js/compras.js?v=20260404"></script>
 <script src="js/fornecedores.js?v=20260329b"></script>
 <script src="js/qualidade.js?v=20260329b"></script>
 <script src="js/modals.js?v=20260329b"></script>
