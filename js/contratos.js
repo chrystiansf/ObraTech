@@ -204,12 +204,12 @@ async function aprovarMedicao(id){
 
   save();
 
-  // Re-renderizar ambas as abas
-  if(document.getElementById('p-contratos')?.classList.contains('on')) renderContratos();
+  // Re-renderizar tudo imediatamente
+  renderContratos();
+  renderMedicoes();
   if(document.getElementById('p-financeiro')?.classList.contains('on')) renderFin();
-  renderContratos(); // sempre atualiza contratos pois estamos nela
 
-  toast('✅',`Medição #${m.numero} aprovada! Lançamento de ${fmtR(m.valorMedido)} adicionado no Financeiro e Contratos.`);
+  toast('✅',`Medição #${m.numero} aprovada! Lançamento de ${fmtR(m.valorMedido)} adicionado.`);
 }
 
 function reprovarMedicao(id){
@@ -217,7 +217,7 @@ function reprovarMedicao(id){
   if(!m||!confirm('Reprovar esta medição?'))return;
   m.status='reprovado';
   supaUpdate('medicoes',id,{status:'reprovado'});
-  save();renderContratos();toast('⚠️','Medição reprovada.');
+  save();renderContratos();renderMedicoes();toast('⚠️','Medição reprovada.');
 }
 
 function medAddFotos(e){
@@ -277,7 +277,7 @@ function delMedicao(id){
   if(!confirm('Excluir medição?'))return;
   supaDelete('medicoes',id);
   DB.medicoes=DB.medicoes.filter(m=>m.id!==id);
-  save();renderContratos();toast('🗑️','Medição excluída.');
+  save();renderContratos();renderMedicoes();toast('🗑️','Medição excluída.');
 }
 
 function gerarBoletimPDF(medicaoId){
