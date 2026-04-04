@@ -145,7 +145,7 @@ function renderMedicoes(){
       const ct=DB.contratos.find(c=>c.id===m.contratoId);
       const o=DB.obras.find(x=>String(x.id)===String(m.obraId));
       const pctAcum=ct?.valor?Math.round(Number(m.valorAcumulado)/Number(ct.valor)*100):0;
-      return`<tr>
+      return`<tr style="cursor:pointer" onclick="previewBoletimPDF('${m.id}')">
         <td style="font-weight:600;color:var(--primary)">#${m.numero||'—'}</td>
         <td class="n">${ct?.numero?`<span style="font-size:10px;color:var(--txt3)">${ct.numero}</span> `:''}${ct?.descricao||'—'}</td>
         <td style="font-size:11px;color:var(--txt2)">${ct?.forn||'—'}</td>
@@ -157,12 +157,12 @@ function renderMedicoes(){
           ${ct?.valor?`<div style="font-size:9px;color:var(--txt3)">${pctAcum}% do contrato</div>`:''}
         </td>
         <td>${statusBadge(m.status)}</td>
-        <td><div class="ta-actions">
+        <td onclick="event.stopPropagation()"><div class="ta-actions">
           ${m.status==='pendente'?`<button class="btn sm" onclick="aprovarMedicao('${m.id}')" title="Aprovar">✓</button>`:''}
           ${m.status==='pendente'?`<button class="btn sm ico" onclick="reprovarMedicao('${m.id}')" title="Reprovar" style="color:var(--red)">✕</button>`:''}
           <button class="btn sm ico" onclick="openModal('medicao','${m.id}')" title="Editar">✏️</button>
           <button class="btn sm ico" onclick="delMedicao('${m.id}')" title="Excluir">🗑️</button>
-          <button class="btn sm" onclick="gerarBoletimPDF('${m.id}')" title="PDF do boletim">📄 PDF</button>
+          <button class="btn sm" onclick="gerarBoletimPDF('${m.id}')" title="Baixar PDF">⬇️</button>
         </div></td>
       </tr>`;
     }).join('')}
@@ -280,13 +280,40 @@ function delMedicao(id){
   save();renderContratos();renderMedicoes();toast('🗑️','Medição excluída.');
 }
 
+function previewBoletimPDF(medicaoId){
+  const doc=_buildBoletimPDF(medicaoId);
+  if(!doc) return;
+  const blob=doc.output('blob');
+  const url=URL.createObjectURL(blob);
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="ov" onmouseup="if(event.target===this&&!window._modalMousedownInside){document.getElementById('modal-root').innerHTML='';URL.revokeObjectURL('${url}')}">
+    <div class="mo" style="max-width:95vw;max-height:95vh;padding:0;width:800px;display:flex;flex-direction:column">
+      <div class="moh" style="flex-shrink:0"><div class="mot">📄 Boletim de Medição</div><div class="mox" onclick="closeModal();URL.revokeObjectURL('${url}')">✕</div></div>
+      <iframe src="${url}" style="flex:1;border:none;min-height:70vh;border-radius:0 0 12px 12px"></iframe>
+      <div class="mof" style="flex-shrink:0">
+        <button class="btn" onclick="closeModal()">Fechar</button>
+        <button class="btn pri" onclick="gerarBoletimPDF('${medicaoId}')">⬇️ Baixar PDF</button>
+      </div>
+    </div></div>`;
+}
+
 function gerarBoletimPDF(medicaoId){
+  const doc=_buildBoletimPDF(medicaoId);
+  if(!doc) return;
   const m=DB.medicoes.find(x=>x.id===medicaoId);
-  if(!m){toast('⚠️','Medição não encontrada.');return;}
+  const ct=DB.contratos.find(c=>c.id===m?.contratoId);
+  const arq='BM_'+String(m?.numero||'01').padStart(3,'0')+'_'+(ct?.numero||'CT').replace(/[^a-zA-Z0-9]/g,'_')+'.pdf';
+  doc.save(arq);
+  toast('📄','Boletim baixado!');
+}
+
+function _buildBoletimPDF(medicaoId){
+  const m=DB.medicoes.find(x=>x.id===medicaoId);
+  if(!m){toast('⚠️','Medição não encontrada.');return null;}
   const ct=DB.contratos.find(c=>c.id===m.contratoId);
   const o=DB.obras.find(x=>String(x.id)===String(m.obraId));
   let doc;
-  try{doc=new jsPDF();}catch(e){toast('⚠️','PDF não disponível.');return;}
+  try{doc=new jsPDF();}catch(e){toast('⚠️','PDF não disponível.');return null;}
   const W=doc.internal.pageSize.getWidth();
   const H=doc.internal.pageSize.getHeight();
   const M=9;
@@ -303,7 +330,7 @@ function gerarBoletimPDF(medicaoId){
 
   // Estilos: corpo sempre preto/cinza (sem cores nas celulas)
   const bodyPB={fontSize:8,cellPadding:{top:2.5,bottom:2.5,left:4,right:4},textColor:PX.ink,lineColor:PX.silver,lineWidth:0.2};
-  const headPB={fillColor:corEmpresa(),textColor:[255,255,255],fontStyle:'bold',fontSize:8,cellPadding:{top:2.2,bottom:2.2,left:4,right:4}};
+  const headPB={fillColor:[70,75,90],textColor:[255,255,255],fontStyle:'bold',fontSize:8,cellPadding:{top:2.2,bottom:2.2,left:4,right:4}};
 
   // ── BLOCO 1: DADOS DO CONTRATO
   y=pSec(doc,y,'Dados do Contrato');
@@ -444,9 +471,7 @@ function gerarBoletimPDF(medicaoId){
   });
 
   pFtr(doc);
-  const arq='BM_'+String(m.numero||'01').padStart(3,'0')+'_'+(ct?.numero||'CT').replace(/[^a-zA-Z0-9]/g,'_')+'.pdf';
-  doc.save(arq);
-  toast('📄','Boletim gerado!');
+  return doc;
 }
 
 

@@ -348,10 +348,12 @@ nav{padding:4px 0;flex:1;display:flex;flex-direction:column;gap:0}
   /* Charts menores */
   .ch-wrap{height:180px !important}
 
-  /* Financeiro mobile */
-  #fin-tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* Financeiro mobile — scroll horizontal e vertical */
+  #fin-tbl-wrap{overflow-x:auto;overflow-y:auto;-webkit-overflow-scrolling:touch;max-height:60vh;position:relative}
+  #fin-tbl-wrap::after{content:'← deslize →';position:sticky;bottom:0;left:0;right:0;text-align:center;font-size:9px;color:var(--txt3);padding:4px;background:linear-gradient(transparent,var(--bg2));pointer-events:none}
   .tbl-filter-hdr th{white-space:nowrap;font-size:10px;padding:6px 5px}
   .tbl-filter-hdr td{white-space:nowrap;font-size:11px;padding:6px 5px}
+  .tbl-filter-hdr .ta-actions{position:sticky;right:0;background:var(--bg2);padding:2px 4px;border-left:1px solid var(--border)}
   .cf-wrap{position:static}
   .cf-drop{position:fixed;left:8px !important;right:8px !important;width:auto !important;z-index:9999}
   #fin-topbar{flex-wrap:wrap;gap:6px}

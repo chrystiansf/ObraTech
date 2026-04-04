@@ -425,6 +425,9 @@ function renderFin(){
           </div></td>
         </tr>`;
       }).join('')+'</table>';
+  // Mobile: garantir scroll horizontal e vertical na tabela
+  const wrap=document.getElementById('fin-tbl-wrap');
+  if(wrap){wrap.style.overflowX='auto';wrap.style.webkitOverflowScrolling='touch';}
   }
   // Categorias com lançamentos, ordenadas do maior para o menor
   const catSet=new Set([...(DB.categorias||[]),...lans.map(l=>l.cat).filter(Boolean)]);
