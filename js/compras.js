@@ -78,11 +78,27 @@ function renderSolicitacoes(){
           ${s.status==='cotando'||s.status==='aberta'?`<button class="btn sm" onclick="solMudarStatus('${s.id}','aprovada')" title="Aprovar" style="color:var(--green)">Aprovar</button>`:''}
           ${s.status==='aprovada'?`<button class="btn sm" onclick="solReceber('${s.id}')" title="Registrar recebimento">Receber</button>`:''}
           <button class="btn sm ico" onclick="openModalSolicitacao('${s.id}')">✏️</button>
-          ${s.status!=='recebida'?`<button class="btn sm ico" onclick="solMudarStatus('${s.id}','cancelada')">🗑️</button>`:''}
+          <button class="btn sm ico" onclick="solExcluir('${s.id}')" title="Excluir">🗑️</button>
         </div></td>
       </tr>`;
     }).join('')}
   </table>`;
+}
+
+function solExcluir(id){
+  if(!confirm('Excluir esta solicitação permanentemente?'))return;
+  try{supaDelete('compras_solicitacoes',id);}catch(e){}
+  // Excluir cotações e pedidos vinculados
+  (DB.cotacoes||[]).filter(c=>String(c.solicitacaoId)===String(id)).forEach(c=>{
+    try{supaDelete('compras_cotacoes',c.id);}catch(e){}
+  });
+  DB.cotacoes=(DB.cotacoes||[]).filter(c=>String(c.solicitacaoId)!==String(id));
+  (DB.pedidosCompra||[]).filter(p=>String(p.solicitacaoId)===String(id)).forEach(p=>{
+    try{supaDelete('compras_pedidos',p.id);}catch(e){}
+  });
+  DB.pedidosCompra=(DB.pedidosCompra||[]).filter(p=>String(p.solicitacaoId)!==String(id));
+  DB.solicitacoes=(DB.solicitacoes||[]).filter(s=>String(s.id)!==String(id));
+  save();renderSolicitacoes();toast('🗑️','Solicitação excluída.');
 }
 
 function solMudarStatus(id,status){
