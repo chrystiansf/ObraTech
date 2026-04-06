@@ -182,7 +182,6 @@ function renderQual(){
   const _qkF=window._qualFiltroKpi||'';
   if(_qkF==='abertas') ncs=ncs.filter(n=>n.status!=='Fechada');
   else if(_qkF==='vencidas') ncs=ncs.filter(n=>n.status!=='Fechada'&&n.prazo&&new Date(n.prazo)<new Date());
-  const _qkF=window._qualFiltroKpi||'';
   const _qkAct=(v)=>_qkF===v?'outline:2px solid var(--primary);outline-offset:-2px;border-radius:10px':'';
   document.getElementById('qual-kpis').innerHTML=`
     <div class="kpi" onclick="qualFiltroKpi('')" style="cursor:pointer;${_qkAct('')}"><div class="kl">📋 Total NCs</div><div class="kv">${ncs.length}</div><div class="kd neu">Registradas</div></div>
