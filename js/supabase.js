@@ -796,7 +796,7 @@ async function supaUpdate(tabela, id, dados){
     console.warn('supaUpdate: id não é UUID, ignorando',tabela,id); return;
   }
   try{
-    const semAtualizado=['pontos','rdo_fotos','checklists','medicoes','cliente_obras'];
+    const semAtualizado=['pontos','rdo_fotos','checklists','medicoes','cliente_obras','estoque'];
     const payload=semAtualizado.includes(tabela)?{...dados}:{...dados,atualizado_em:new Date().toISOString()};
     const {error}=await supa.from(tabela).update(payload).eq('id',id).eq('empresa_id',_empresaId);
     if(error){
